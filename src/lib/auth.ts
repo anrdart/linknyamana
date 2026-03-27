@@ -1,5 +1,4 @@
-import { sql } from '@/lib/db'
-import bcrypt from 'bcryptjs'
+import type { NeonQueryFunction } from '@neondatabase/serverless'
 
 export interface User {
   id: string
@@ -16,7 +15,7 @@ function generateToken(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export async function verifyLogin(username: string, password: string): Promise<User | null> {
+export async function verifyLogin(sql: NeonQueryFunction<false, false>, username: string, password: string): Promise<User | null> {
   const rows = await sql`
     SELECT id, username, display_name, role, password_hash
     FROM users
@@ -28,13 +27,14 @@ export async function verifyLogin(username: string, password: string): Promise<U
 
   const user = rows[0] as { id: string; username: string; display_name: string; role: string; password_hash: string }
 
+  const bcrypt = (await import('bcryptjs')).default
   const valid = await bcrypt.compare(password, user.password_hash)
   if (!valid) return null
 
   return { id: user.id, username: user.username, display_name: user.display_name, role: user.role }
 }
 
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(sql: NeonQueryFunction<false, false>, userId: string): Promise<string> {
   const token = generateToken()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS)
@@ -47,7 +47,7 @@ export async function createSession(userId: string): Promise<string> {
   return token
 }
 
-export async function validateSession(token: string): Promise<User | null> {
+export async function validateSession(sql: NeonQueryFunction<false, false>, token: string): Promise<User | null> {
   const rows = await sql`
     SELECT s.id, s.expires_at, u.id as user_id, u.username, u.display_name, u.role
     FROM sessions s
@@ -63,6 +63,6 @@ export async function validateSession(token: string): Promise<User | null> {
   return { id: row.user_id, username: row.username, display_name: row.display_name, role: row.role }
 }
 
-export async function destroySession(token: string): Promise<void> {
+export async function destroySession(sql: NeonQueryFunction<false, false>, token: string): Promise<void> {
   await sql`DELETE FROM sessions WHERE token = ${token}`
 }

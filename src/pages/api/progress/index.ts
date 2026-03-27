@@ -1,7 +1,9 @@
 import type { APIRoute } from 'astro'
-import { sql } from '@/lib/db'
+import { getDb } from '@/lib/db'
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ locals }) => {
+  const sql = getDb(locals.runtime?.env?.DATABASE_URL as string | undefined)
+
   try {
     const rows = await sql`
       SELECT domain_name, completed_tasks
@@ -22,7 +24,9 @@ export const GET: APIRoute = async () => {
   }
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
+  const sql = getDb(locals.runtime?.env?.DATABASE_URL as string | undefined)
+
   try {
     const body = await request.json()
     const { domain_name, completed_tasks } = body

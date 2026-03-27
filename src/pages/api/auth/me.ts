@@ -1,7 +1,11 @@
 import type { APIRoute } from 'astro'
 import { validateSession } from '@/lib/auth'
+import { getDb } from '@/lib/db'
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, locals }) => {
+  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
+  const sql = getDb(databaseUrl)
+
   const token = cookies.get('session')?.value
 
   if (!token) {
@@ -13,7 +17,7 @@ export const GET: APIRoute = async ({ cookies }) => {
 
   let user
   try {
-    user = await validateSession(token)
+    user = await validateSession(sql, token)
   } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,

@@ -1,7 +1,11 @@
 import type { APIRoute } from 'astro'
 import { verifyLogin, createSession } from '@/lib/auth'
+import { getDb } from '@/lib/db'
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
+  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
+  const sql = getDb(databaseUrl)
+
   try {
     const body = await request.json()
     const { username, password } = body as { username: string; password: string }
@@ -13,7 +17,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const user = await verifyLogin(username, password)
+    const user = await verifyLogin(sql, username, password)
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'Username atau password salah' }), {
@@ -22,7 +26,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const token = await createSession(user.id)
+    const token = await createSession(sql, user.id)
 
     cookies.set('session', token, {
       path: '/',
@@ -44,12 +48,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('Login error:', msg)
-    const hint = msg.includes('DATABASE_URL') || msg.includes('undefined')
-      ? 'DATABASE_URL belum dikonfigurasi di environment'
-      : msg.includes('DNS') || msg.includes('connect')
-        ? 'Gagal terhubung ke database Neon'
-        : msg
-    return new Response(JSON.stringify({ error: `DB Error: ${hint}` }), {
+    return new Response(JSON.stringify({ error: `DB Error: ${msg}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })

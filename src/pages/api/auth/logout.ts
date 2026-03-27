@@ -1,12 +1,16 @@
 import type { APIRoute } from 'astro'
 import { destroySession } from '@/lib/auth'
+import { getDb } from '@/lib/db'
 
-export const POST: APIRoute = async ({ cookies }) => {
+export const POST: APIRoute = async ({ cookies, locals }) => {
+  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
+  const sql = getDb(databaseUrl)
+
   const token = cookies.get('session')?.value
 
   try {
     if (token) {
-      await destroySession(token)
+      await destroySession(sql, token)
     }
   } catch {
     // ignore DB errors on logout
