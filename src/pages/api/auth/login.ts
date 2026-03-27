@@ -42,8 +42,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
     )
   } catch (error) {
-    console.error('Login error:', error)
-    return new Response(JSON.stringify({ error: 'Tidak dapat terhubung ke database' }), {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('Login error:', msg)
+    const hint = msg.includes('DATABASE_URL') || msg.includes('undefined')
+      ? 'DATABASE_URL belum dikonfigurasi di environment'
+      : msg.includes('DNS') || msg.includes('connect')
+        ? 'Gagal terhubung ke database Neon'
+        : msg
+    return new Response(JSON.stringify({ error: `DB Error: ${hint}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
