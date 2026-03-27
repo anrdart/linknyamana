@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro'
-import { verifyLogin, createSession } from '@/lib/auth'
+import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
+import { verifyLogin, createSession } from '@/lib/auth'
 
-export const POST: APIRoute = async ({ request, cookies, locals }) => {
-  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
-  const sql = getDb(databaseUrl)
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const sql = getDb(env.DATABASE_URL)
 
   try {
     const body = await request.json()

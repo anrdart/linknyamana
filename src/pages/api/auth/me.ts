@@ -1,11 +1,9 @@
 import type { APIRoute } from 'astro'
-import { validateSession } from '@/lib/auth'
+import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
+import { validateSession } from '@/lib/auth'
 
-export const GET: APIRoute = async ({ cookies, locals }) => {
-  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
-  const sql = getDb(databaseUrl)
-
+export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
 
   if (!token) {
@@ -17,6 +15,7 @@ export const GET: APIRoute = async ({ cookies, locals }) => {
 
   let user
   try {
+    const sql = getDb(env.DATABASE_URL)
     user = await validateSession(sql, token)
   } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

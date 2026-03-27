@@ -1,15 +1,14 @@
 import type { APIRoute } from 'astro'
-import { destroySession } from '@/lib/auth'
+import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
+import { destroySession } from '@/lib/auth'
 
-export const POST: APIRoute = async ({ cookies, locals }) => {
-  const databaseUrl = locals.runtime?.env?.DATABASE_URL as string | undefined
-  const sql = getDb(databaseUrl)
-
+export const POST: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
 
   try {
     if (token) {
+      const sql = getDb(env.DATABASE_URL)
       await destroySession(sql, token)
     }
   } catch {

@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro'
+import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 
-export const GET: APIRoute = async ({ locals }) => {
-  const sql = getDb(locals.runtime?.env?.DATABASE_URL as string | undefined)
+export const GET: APIRoute = async () => {
+  const sql = getDb(env.DATABASE_URL)
 
   try {
     const rows = await sql`
@@ -24,8 +25,8 @@ export const GET: APIRoute = async ({ locals }) => {
   }
 }
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  const sql = getDb(locals.runtime?.env?.DATABASE_URL as string | undefined)
+export const POST: APIRoute = async ({ request }) => {
+  const sql = getDb(env.DATABASE_URL)
 
   try {
     const body = await request.json()
