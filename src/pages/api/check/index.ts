@@ -18,71 +18,86 @@ function analyzeContent(body: string): 'online' | 'offline' {
   return 'online'
 }
 
-const proxyFns = [
-  async (url: string) => {
-    const res = await fetch(
-      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-      { signal: AbortSignal.timeout(12000) }
-    )
-    if (!res.ok) throw new Error('proxy error')
-    const json = (await res.json()) as {
-      status: { http_code: number }
-      contents: string
+async function fetchContent(url: string, proxyIndex: number): Promise<'online' | 'offline' | null> {
+  const proxies = [
+    async (u: string) => {
+      const res = await fetch(
+        `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+        { signal: AbortSignal.timeout(10000) }
+      )
+      if (!res.ok) throw new Error('proxy error')
+      const json = (await res.json()) as {
+        status: { http_code: number }
+        contents: string
+      }
+      const httpCode = json.status?.http_code ?? 0
+      if (httpCode < 200 || httpCode >= 500) return 'offline'
+      return analyzeContent(json.contents ?? '')
+    },
+    async (u: string) => {
+      const res = await fetch(
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+        { signal: AbortSignal.timeout(10000) }
+      )
+      if (!res.ok) throw new Error('proxy error')
+      return analyzeContent(await res.text())
+    },
+    async (u: string) => {
+      const res = await fetch(
+        `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        { signal: AbortSignal.timeout(10000) }
+      )
+      if (!res.ok && res.status !== 0) throw new Error('proxy error')
+      return analyzeContent(await res.text())
+    },
+  ]
+
+  const rotated = [...proxies.slice(proxyIndex % proxies.length), ...proxies.slice(0, proxyIndex % proxies.length)]
+
+  for (const proxy of rotated) {
+    try {
+      return await proxy(url)
+    } catch {
+      continue
     }
-    const httpCode = json.status?.http_code ?? 0
-    if (httpCode < 200 || httpCode >= 500) return 'offline'
-    return analyzeContent(json.contents ?? '')
-  },
-  async (url: string) => {
-    const res = await fetch(
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-      { signal: AbortSignal.timeout(12000) }
-    )
-    if (!res.ok) throw new Error('proxy error')
-    return analyzeContent(await res.text())
-  },
-  async (url: string) => {
-    const res = await fetch(
-      `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      { signal: AbortSignal.timeout(12000) }
-    )
-    if (!res.ok && res.status !== 0) throw new Error('proxy error')
-    return analyzeContent(await res.text())
-  },
-  async (url: string) => {
-    const res = await fetch(url, {
+  }
+
+  return null
+}
+
+async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
+  const normalizedUrl = url.replace(/^http:/, 'https:')
+
+  let serverUp = false
+  let httpCode = 0
+
+  try {
+    const res = await fetch(normalizedUrl, {
       method: 'GET',
       redirect: 'follow',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(10000),
     })
-    if (!res.ok) return 'offline'
-    return analyzeContent(await res.text())
-  },
-]
+    httpCode = res.status
+    serverUp = true
+  } catch {
+    return 'offline'
+  }
+
+  if (httpCode >= 500) return 'offline'
+
+  const contentResult = await fetchContent(normalizedUrl, index)
+
+  if (contentResult !== null) return contentResult
+
+  return 'online'
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
-}
-
-async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
-  const normalizedUrl = url.replace(/^http:/, 'https:')
-
-  const rotated = [...proxyFns.slice(index % proxyFns.length), ...proxyFns.slice(0, index % proxyFns.length)]
-
-  for (const proxy of rotated) {
-    try {
-      const result = await proxy(normalizedUrl)
-      if (result === 'online') return 'online'
-    } catch {
-      continue
-    }
-  }
-
-  return 'offline'
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -120,7 +135,7 @@ export const POST: APIRoute = async ({ request }) => {
           }
 
           if (i < urls.length - 1) {
-            await delay(1500)
+            await delay(800)
           }
         }
 
