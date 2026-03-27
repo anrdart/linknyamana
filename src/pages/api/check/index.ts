@@ -1,26 +1,13 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
+import { checkDomain } from '@/lib/status-check'
+
+const BATCH_SIZE = 5
+const BATCH_DELAY = 400
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
-}
-
-async function checkSingle(url: string): Promise<'online' | 'offline'> {
-  const normalizedUrl = url.replace(/^http:/, 'https:')
-
-  try {
-    const res = await fetch(normalizedUrl, {
-      method: 'HEAD',
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-    })
-    if (res.ok) return 'online'
-    if (res.status >= 400 && res.status < 500) return 'online'
-    return 'offline'
-  } catch {
-    return 'offline'
-  }
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -73,29 +60,38 @@ export const POST: APIRoute = async ({ request }) => {
           }
         }
 
-        for (let i = 0; i < urls.length; i++) {
-          try {
-            const status = await checkSingle(urls[i])
+        for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+          const batch = urls.slice(i, i + BATCH_SIZE)
+
+          const results = await Promise.allSettled(
+            batch.map(async (url) => ({
+              url,
+              status: await checkDomain(url),
+            }))
+          )
+
+          for (const result of results) {
             checked++
-            sendEvent({ type: 'result', url: urls[i], status, checked, total })
+            const url = result.status === 'fulfilled' ? result.value.url : batch[results.indexOf(result)]
+            const status: 'online' | 'offline' =
+              result.status === 'fulfilled' ? result.value.status : 'offline'
+
+            sendEvent({ type: 'result', url, status, checked, total })
 
             try {
               await sql`
                 INSERT INTO domain_status (domain_url, status, checked_at)
-                VALUES (${urls[i]}, ${status}, NOW())
+                VALUES (${url}, ${status}, NOW())
                 ON CONFLICT (domain_url)
                 DO UPDATE SET status = ${status}, checked_at = NOW()
               `
             } catch {
               // ignore
             }
-          } catch {
-            checked++
-            sendEvent({ type: 'result', url: urls[i], status: 'offline', checked, total })
           }
 
-          if (i < urls.length - 1) {
-            await delay(1000)
+          if (i + BATCH_SIZE < urls.length) {
+            await delay(BATCH_DELAY)
           }
         }
 
