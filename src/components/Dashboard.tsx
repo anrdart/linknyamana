@@ -2,11 +2,23 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { StatusSummary } from '@/components/StatusSummary'
 import { DomainCard } from '@/components/DomainCard'
 import { DomainDetailDialog } from '@/components/DomainDetailDialog'
-import { domainCategories, type Domain, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity } from 'lucide-react'
+import { userDomains, type Domain, WORDPRESS_SETUP_STEPS } from '@/data/domains'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+
+export interface UserInfo {
+  id: string
+  username: string
+  display_name: string
+  role: string
+}
+
+interface DashboardProps {
+  user: UserInfo
+  onLogout: () => void
+}
 
 type StatusFilter = 'all' | 'online' | 'offline' | 'checking'
 
@@ -14,8 +26,8 @@ interface ProgressMap {
   [domainName: string]: number[]
 }
 
-export default function Dashboard() {
-  const [categories, setCategories] = useState(domainCategories)
+export default function Dashboard({ user, onLogout }: DashboardProps) {
+  const [categories, setCategories] = useState(userDomains[user.username] ?? [])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [checkProgress, setCheckProgress] = useState({ checked: 0, total: 0 })
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null)
@@ -158,7 +170,7 @@ export default function Dashboard() {
     ? categories.filter((c) => c.name === activeCategory)
     : categories
 
-  const getFilteredDomains = (cat: typeof domainCategories[number]) => {
+  const getFilteredDomains = (cat: typeof userDomains[string][number]) => {
     return cat.domains.filter(
       (d) => statusFilter === 'all' || d.status === statusFilter
     )
@@ -181,7 +193,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Mobile sidebar toggle */}
       <Button
         variant="ghost"
         size="icon"
@@ -191,7 +202,6 @@ export default function Dashboard() {
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
 
-      {/* Sidebar */}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
@@ -201,9 +211,9 @@ export default function Dashboard() {
         <div className="flex h-full flex-col">
           <div className="flex items-center gap-2 border-b p-4">
             <Shield className="h-6 w-6 text-primary" />
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className="font-bold text-sm">LinkNyaMana</h1>
-              <p className="text-[10px] text-muted-foreground">Web Management Dashboard</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user.display_name}</p>
             </div>
           </div>
 
@@ -245,7 +255,14 @@ export default function Dashboard() {
             ))}
           </nav>
 
-          <div className="border-t p-3">
+          <div className="border-t p-3 space-y-2">
+            <button
+              onClick={onLogout}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Keluar
+            </button>
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-[10px] text-muted-foreground">
                 Auto-refresh every 15 minutes
@@ -255,7 +272,6 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
@@ -263,16 +279,17 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              {activeCategory ? activeCategory : 'Dashboard'}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Monitor website uptime and track WordPress setup progress
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">
+                {activeCategory ? activeCategory : 'Dashboard'}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Halo, {user.display_name} &mdash; Monitor website uptime dan tracking setup progress
+              </p>
+            </div>
           </div>
 
           <StatusSummary
@@ -285,15 +302,12 @@ export default function Dashboard() {
             onStatusFilterChange={setStatusFilter}
           />
 
-          {/* Checking progress bar */}
           {isRefreshing && checkProgress.total > 0 && (
             <div className="rounded-lg border bg-card p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-primary animate-pulse" />
-                  <span className="font-medium">
-                    Checking status...
-                  </span>
+                  <span className="font-medium">Checking status...</span>
                 </div>
                 <span className="text-muted-foreground tabular-nums">
                   {checkProgress.checked} / {checkProgress.total} domains

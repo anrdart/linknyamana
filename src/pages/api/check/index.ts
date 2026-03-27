@@ -19,55 +19,92 @@ function analyzeContent(body: string): 'online' | 'offline' {
 }
 
 async function checkSingle(url: string): Promise<'online' | 'offline'> {
-  const checks: Promise<'online' | 'offline'>[] = []
+  const normalizedUrl = url.replace(/^http:/, 'https:')
 
-  checks.push(
-    (async () => {
-      const res = await fetch(url, {
-        method: 'GET',
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-        signal: AbortSignal.timeout(12000),
-      })
-      if (!res.ok) return 'offline'
-      const text = await res.text()
-      return analyzeContent(text)
-    })()
-  )
-
-  checks.push(
-    (async () => {
-      const res = await fetch(
-        `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        { signal: AbortSignal.timeout(10000) }
-      )
-      if (!res.ok) throw new Error('proxy error')
-      const json = (await res.json()) as {
-        status: { http_code: number }
-        contents: string
-      }
-      const httpCode = json.status?.http_code ?? 0
-      if (httpCode < 200 || httpCode >= 500) return 'offline'
-      return analyzeContent(json.contents ?? '')
-    })()
-  )
-
-  const results = await Promise.allSettled(checks)
+  const checks: { name: string; fn: () => Promise<'online' | 'offline'> }[] = [
+    {
+      name: 'allorigins',
+      fn: async () => {
+        const res = await fetch(
+          `https://api.allorigins.win/get?url=${encodeURIComponent(normalizedUrl)}`,
+          { signal: AbortSignal.timeout(15000) }
+        )
+        if (!res.ok) throw new Error('proxy error')
+        const json = (await res.json()) as {
+          status: { http_code: number }
+          contents: string
+        }
+        const httpCode = json.status?.http_code ?? 0
+        if (httpCode < 200 || httpCode >= 500) return 'offline'
+        return analyzeContent(json.contents ?? '')
+      },
+    },
+    {
+      name: 'allorigins-raw',
+      fn: async () => {
+        const res = await fetch(
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(normalizedUrl)}`,
+          { signal: AbortSignal.timeout(15000) }
+        )
+        if (!res.ok) throw new Error('proxy error')
+        return analyzeContent(await res.text())
+      },
+    },
+    {
+      name: 'codetabs',
+      fn: async () => {
+        const res = await fetch(
+          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(normalizedUrl)}`,
+          { signal: AbortSignal.timeout(15000) }
+        )
+        if (!res.ok) throw new Error('proxy error')
+        return analyzeContent(await res.text())
+      },
+    },
+    {
+      name: 'corsproxy',
+      fn: async () => {
+        const res = await fetch(
+          `https://corsproxy.io/?${encodeURIComponent(normalizedUrl)}`,
+          { signal: AbortSignal.timeout(15000) }
+        )
+        if (!res.ok && res.status !== 0) throw new Error('proxy error')
+        return analyzeContent(await res.text())
+      },
+    },
+    {
+      name: 'direct',
+      fn: async () => {
+        const res = await fetch(normalizedUrl, {
+          method: 'GET',
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          signal: AbortSignal.timeout(15000),
+        })
+        if (!res.ok) return 'offline'
+        return analyzeContent(await res.text())
+      },
+    },
+  ]
 
   let online = 0
   let offline = 0
 
-  for (const r of results) {
-    if (r.status === 'fulfilled') {
-      if (r.value === 'online') online++
+  for (const check of checks) {
+    try {
+      const result = await check.fn()
+      if (result === 'online') online++
       else offline++
+      if (online > 0) return 'online'
+    } catch {
+      // check failed, try next
     }
   }
 
-  return online >= offline ? 'online' : 'offline'
+  return online + offline === 0 ? 'offline' : online >= offline ? 'online' : 'offline'
 }
 
 export const POST: APIRoute = async ({ request }) => {
