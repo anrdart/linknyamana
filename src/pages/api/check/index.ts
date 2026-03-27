@@ -18,93 +18,71 @@ function analyzeContent(body: string): 'online' | 'offline' {
   return 'online'
 }
 
-async function checkSingle(url: string): Promise<'online' | 'offline'> {
+const proxyFns = [
+  async (url: string) => {
+    const res = await fetch(
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(12000) }
+    )
+    if (!res.ok) throw new Error('proxy error')
+    const json = (await res.json()) as {
+      status: { http_code: number }
+      contents: string
+    }
+    const httpCode = json.status?.http_code ?? 0
+    if (httpCode < 200 || httpCode >= 500) return 'offline'
+    return analyzeContent(json.contents ?? '')
+  },
+  async (url: string) => {
+    const res = await fetch(
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(12000) }
+    )
+    if (!res.ok) throw new Error('proxy error')
+    return analyzeContent(await res.text())
+  },
+  async (url: string) => {
+    const res = await fetch(
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(12000) }
+    )
+    if (!res.ok && res.status !== 0) throw new Error('proxy error')
+    return analyzeContent(await res.text())
+  },
+  async (url: string) => {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(12000),
+    })
+    if (!res.ok) return 'offline'
+    return analyzeContent(await res.text())
+  },
+]
+
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
   const normalizedUrl = url.replace(/^http:/, 'https:')
 
-  const proxies: { name: string; fn: () => Promise<'online' | 'offline'> }[] = [
-    {
-      name: 'allorigins',
-      fn: async () => {
-        const res = await fetch(
-          `https://api.allorigins.win/get?url=${encodeURIComponent(normalizedUrl)}`,
-          { signal: AbortSignal.timeout(12000) }
-        )
-        if (!res.ok) throw new Error('proxy error')
-        const json = (await res.json()) as {
-          status: { http_code: number }
-          contents: string
-        }
-        const httpCode = json.status?.http_code ?? 0
-        if (httpCode < 200 || httpCode >= 500) return 'offline'
-        return analyzeContent(json.contents ?? '')
-      },
-    },
-    {
-      name: 'allorigins-raw',
-      fn: async () => {
-        const res = await fetch(
-          `https://api.allorigins.win/raw?url=${encodeURIComponent(normalizedUrl)}`,
-          { signal: AbortSignal.timeout(12000) }
-        )
-        if (!res.ok) throw new Error('proxy error')
-        return analyzeContent(await res.text())
-      },
-    },
-    {
-      name: 'codetabs',
-      fn: async () => {
-        const res = await fetch(
-          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(normalizedUrl)}`,
-          { signal: AbortSignal.timeout(12000) }
-        )
-        if (!res.ok) throw new Error('proxy error')
-        return analyzeContent(await res.text())
-      },
-    },
-    {
-      name: 'corsproxy',
-      fn: async () => {
-        const res = await fetch(
-          `https://corsproxy.io/?${encodeURIComponent(normalizedUrl)}`,
-          { signal: AbortSignal.timeout(12000) }
-        )
-        if (!res.ok && res.status !== 0) throw new Error('proxy error')
-        return analyzeContent(await res.text())
-      },
-    },
-    {
-      name: 'direct',
-      fn: async () => {
-        const res = await fetch(normalizedUrl, {
-          method: 'GET',
-          redirect: 'follow',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          },
-          signal: AbortSignal.timeout(12000),
-        })
-        if (!res.ok) return 'offline'
-        return analyzeContent(await res.text())
-      },
-    },
-  ]
+  const rotated = [...proxyFns.slice(index % proxyFns.length), ...proxyFns.slice(0, index % proxyFns.length)]
 
-  let online = 0
-  let offline = 0
-
-  for (const check of proxies) {
+  for (const proxy of rotated) {
     try {
-      const result = await check.fn()
-      if (result === 'online') online++
-      else offline++
-      if (online > 0) return 'online'
+      const result = await proxy(normalizedUrl)
+      if (result === 'online') return 'online'
     } catch {
       continue
     }
   }
 
-  return online + offline === 0 ? 'offline' : online >= offline ? 'online' : 'offline'
+  return 'offline'
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -133,12 +111,16 @@ export const POST: APIRoute = async ({ request }) => {
 
         for (let i = 0; i < urls.length; i++) {
           try {
-            const status = await checkSingle(urls[i])
+            const status = await checkSingle(urls[i], i)
             checked++
             sendEvent({ type: 'result', url: urls[i], status, checked, total })
           } catch {
             checked++
             sendEvent({ type: 'result', url: urls[i], status: 'offline', checked, total })
+          }
+
+          if (i < urls.length - 1) {
+            await delay(1500)
           }
         }
 
