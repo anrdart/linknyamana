@@ -2,84 +2,25 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 
-const deadPatterns = [
-  'paket telah berakhir',
-  'paket sudah berakhir',
-  'situs dalam perbaikan',
-  'sedang melakukan pemeliharaan',
-  'error establishing a database connection',
-  'this account has been suspended',
-  'domain has expired',
-  'nama domain ini sedang',
-]
-
-function analyzeContent(body: string): 'online' | 'offline' {
-  const lower = body.toLowerCase()
-  if (deadPatterns.some((p) => lower.includes(p))) return 'offline'
-  if (lower.length < 100) return 'offline'
-  return 'online'
-}
-
-async function checkContent(url: string, proxyIndex: number): Promise<'online' | 'offline' | null> {
-  const proxies = [
-    async (u: string) => {
-      const res = await fetch(
-        `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-        { signal: AbortSignal.timeout(10000) }
-      )
-      if (!res.ok) throw new Error('proxy error')
-      const json = (await res.json()) as {
-        status: { http_code: number }
-        contents: string
-      }
-      if (json.status?.http_code >= 500) return 'offline'
-      return analyzeContent(json.contents ?? '')
-    },
-    async (u: string) => {
-      const res = await fetch(
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-        { signal: AbortSignal.timeout(10000) }
-      )
-      if (!res.ok) throw new Error('proxy error')
-      return analyzeContent(await res.text())
-    },
-  ]
-
-  const rotated = [...proxies.slice(proxyIndex % proxies.length), ...proxies.slice(0, proxyIndex % proxies.length)]
-
-  for (const proxy of rotated) {
-    try {
-      return await proxy(url)
-    } catch {
-      continue
-    }
-  }
-
-  return null
-}
-
-async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
-  const normalizedUrl = url.replace(/^http:/, 'https:')
-
-  const res = await fetch(normalizedUrl, {
-    method: 'HEAD',
-    redirect: 'follow',
-    signal: AbortSignal.timeout(8000),
-  }).catch(() => null)
-
-  if (!res || res.status >= 500) return 'offline'
-
-  if (res.status >= 400) return 'online'
-
-  const contentResult = await checkContent(normalizedUrl, index)
-
-  if (contentResult !== null) return contentResult
-
-  return 'online'
-}
-
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+async function checkSingle(url: string): Promise<'online' | 'offline'> {
+  const normalizedUrl = url.replace(/^http:/, 'https:')
+
+  try {
+    const res = await fetch(normalizedUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+    })
+    if (res.ok) return 'online'
+    if (res.status >= 400 && res.status < 500) return 'online'
+    return 'offline'
+  } catch {
+    return 'offline'
+  }
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -119,7 +60,7 @@ export const POST: APIRoute = async ({ request }) => {
               for (const row of cached) {
                 cacheMap.set((row as { domain_url: string }).domain_url, (row as { status: string }).status)
               }
-              for (url of urls) {
+              for (const url of urls) {
                 checked++
                 sendEvent({ type: 'result', url, status: (cacheMap.get(url) as 'online' | 'offline') || 'offline', checked, total })
               }
@@ -128,13 +69,13 @@ export const POST: APIRoute = async ({ request }) => {
               return
             }
           } catch {
-            // cache miss, proceed to check
+            // cache miss, proceed
           }
         }
 
         for (let i = 0; i < urls.length; i++) {
           try {
-            const status = await checkSingle(urls[i], i)
+            const status = await checkSingle(urls[i])
             checked++
             sendEvent({ type: 'result', url: urls[i], status, checked, total })
 
@@ -146,7 +87,7 @@ export const POST: APIRoute = async ({ request }) => {
                 DO UPDATE SET status = ${status}, checked_at = NOW()
               `
             } catch {
-              // cache write fail, not critical
+              // ignore
             }
           } catch {
             checked++
@@ -154,7 +95,7 @@ export const POST: APIRoute = async ({ request }) => {
           }
 
           if (i < urls.length - 1) {
-            await delay(2000)
+            await delay(1000)
           }
         }
 

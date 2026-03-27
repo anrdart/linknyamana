@@ -161,7 +161,52 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     checkAllStatuses()
   }, [])
 
+  const deepCheckDomain = useCallback(async (domain: Domain) => {
+    const current = categories
+      .flatMap((c) => c.domains)
+      .find((d) => d.url === domain.url)
+    if (!current) return
+
+    setCategories((prev) =>
+      prev.map((cat) => ({
+        ...cat,
+        domains: cat.domains.map((d) =>
+          d.url === domain.url ? { ...d, status: 'checking' as const } : d
+        ),
+      }))
+    )
+
+    try {
+      const res = await fetch('/api/check-deep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: domain.url }),
+      })
+      const data = await res.json()
+      const status = (data.status ?? 'offline') as 'online' | 'offline'
+
+      setCategories((prev) =>
+        prev.map((cat) => ({
+          ...cat,
+          domains: cat.domains.map((d) =>
+            d.url === domain.url ? { ...d, status, lastChecked: new Date() } : d
+          ),
+        }))
+      )
+    } catch {
+      setCategories((prev) =>
+        prev.map((cat) => ({
+          ...cat,
+          domains: cat.domains.map((d) =>
+            d.url === domain.url ? { ...d, status: 'offline' as const, lastChecked: new Date() } : d
+          ),
+        }))
+      )
+    }
+  }, [categories])
+
   const handleDomainClick = (domain: Domain) => {
+    deepCheckDomain(domain)
     setSelectedDomain(domain)
     setDialogOpen(true)
   }
