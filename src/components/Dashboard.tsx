@@ -99,7 +99,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         if (!domain) break
 
         try {
-          const res = await fetch(`/api/check?url=${encodeURIComponent(domain.url)}&force=${force}`, {
+          const res = await fetch('/api/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: domain.url, force }),
             signal: abort.signal,
           })
           const data = await res.json()
