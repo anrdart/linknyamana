@@ -69,6 +69,39 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [])
 
+  const CHUNK_SIZE = 8
+
+  const processSSEStream = async (
+    res: Response,
+    onResult: (url: string, status: 'online' | 'offline') => void
+  ) => {
+    if (!res.body) return
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const event = JSON.parse(line.slice(6))
+          if (event.type === 'result') {
+            onResult(event.url as string, event.status as 'online' | 'offline')
+          }
+        } catch {
+          // skip malformed events
+        }
+      }
+    }
+  }
+
   const checkAllStatuses = useCallback(async (force = false) => {
     if (isRefreshing) return
 
@@ -76,6 +109,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
     const allDomains = categories.flatMap((c) => c.domains)
     const total = allDomains.length
+    let checked = 0
     setCheckProgress({ checked: 0, total })
 
     setCategories((prev) =>
@@ -88,72 +122,62 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     const abort = new AbortController()
     abortRef.current = abort
 
-    try {
-      const res = await fetch('/api/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: allDomains.map((d) => d.url), force }),
-        signal: abort.signal,
-      })
+    const urls = allDomains.map((d) => d.url)
+    const chunks: string[][] = []
+    for (let i = 0; i < urls.length; i += CHUNK_SIZE) {
+      chunks.push(urls.slice(i, i + CHUNK_SIZE))
+    }
 
-      if (!res.ok || !res.body) throw new Error('API error')
+    for (let ci = 0; ci < chunks.length; ci++) {
+      if (abort.signal.aborted) break
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      try {
+        const res = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: chunks[ci], force }),
+          signal: abort.signal,
+        })
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+        if (!res.ok) throw new Error('API error')
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
+        await processSSEStream(res, (url, status) => {
+          checked++
+          setCheckProgress({ checked, total })
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const event = JSON.parse(line.slice(6))
+          setCategories((prev) =>
+            prev.map((cat) => ({
+              ...cat,
+              domains: cat.domains.map((d) =>
+                d.url === url ? { ...d, status, lastChecked: new Date() } : d
+              ),
+            }))
+          )
+        })
+      } catch {
+        if (abort.signal.aborted) break
 
-            if (event.type === 'result') {
-              const { url, status, checked, total: t } = event as {
-                url: string
-                status: 'online' | 'offline'
-                checked: number
-                total: number
-              }
-              setCheckProgress({ checked, total: t })
-
-              const urlKey = url as string
-              setCategories((prev) =>
-                prev.map((cat) => ({
-                  ...cat,
-                  domains: cat.domains.map((d) =>
-                    d.url === urlKey
-                      ? { ...d, status, lastChecked: new Date() }
-                      : d
-                  ),
-                }))
-              )
-            }
-          } catch {
-            // skip malformed events
-          }
+        for (const url of chunks[ci]) {
+          checked++
+          setCategories((prev) =>
+            prev.map((cat) => ({
+              ...cat,
+              domains: cat.domains.map((d) =>
+                d.url === url ? { ...d, status: 'offline' as const, lastChecked: new Date() } : d
+              ),
+            }))
+          )
         }
+        setCheckProgress({ checked, total })
       }
-    } catch {
-      if (!abort.signal.aborted) {
-        setCategories((prev) =>
-          prev.map((cat) => ({
-            ...cat,
-            domains: cat.domains.map((d) => ({ ...d, status: 'offline' as const })),
-          }))
-        )
+
+      if (ci < chunks.length - 1) {
+        await new Promise((r) => setTimeout(r, 800))
       }
     }
 
     setIsRefreshing(false)
-    setCheckProgress((prev) => ({ checked: prev.total, total: prev.total }))
+    setCheckProgress({ checked: total, total })
     abortRef.current = null
   }, [categories, isRefreshing])
 

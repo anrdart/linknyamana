@@ -3,8 +3,8 @@ import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 import { checkDomain } from '@/lib/status-check'
 
-const BATCH_SIZE = 5
-const BATCH_DELAY = 400
+const BATCH_SIZE = 3
+const BATCH_DELAY = 1200
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))

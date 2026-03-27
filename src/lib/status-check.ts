@@ -34,7 +34,7 @@ export async function checkDomain(url: string): Promise<'online' | 'offline'> {
 
     if (res.status >= 500) return 'offline'
 
-    const text = await getTextSnippet(res, 20000)
+    const text = await getTextSnippet(res, 3000)
     return analyzeContent(text)
   } catch {
     return 'offline'
