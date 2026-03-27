@@ -36,6 +36,16 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at);
 CREATE INDEX IF NOT EXISTS idx_domain_progress_domain_name ON domain_progress (domain_name);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 
+-- Domain status cache table (shared across all users)
+CREATE TABLE IF NOT EXISTS domain_status (
+  domain_url TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'checking',
+  checked_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_domain_status_url ON domain_status (domain_url);
+CREATE INDEX IF NOT EXISTS idx_domain_status_checked ON domain_status (checked_at);
+
 -- Seed default users
 INSERT INTO users (username, display_name, password_hash, role) VALUES
   ('alul', 'Alul', '$2b$10$w7CkcM0/c535MHuLP9ALaOQukZAWOnNvyERSjSQhGp/zXQ/FmKlpK', 'admin'),

@@ -61,7 +61,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     fetchAllProgress().finally(() => setInitialLoading(false))
 
     refreshTimerRef.current = setInterval(() => {
-      checkAllStatuses()
+      checkAllStatuses(false)
     }, 900000)
 
     return () => {
@@ -69,7 +69,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [])
 
-  const checkAllStatuses = useCallback(async () => {
+  const checkAllStatuses = useCallback(async (force = false) => {
     if (isRefreshing) return
 
     setIsRefreshing(true)
@@ -92,7 +92,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const res = await fetch('/api/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: allDomains.map((d) => d.url) }),
+        body: JSON.stringify({ urls: allDomains.map((d) => d.url), force }),
         signal: abort.signal,
       })
 

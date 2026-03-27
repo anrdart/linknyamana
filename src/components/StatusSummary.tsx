@@ -10,7 +10,7 @@ type StatusFilter = 'all' | 'online' | 'offline' | 'checking'
 
 interface StatusSummaryProps {
   categories: DomainCategory[]
-  onRefresh: () => void
+  onRefresh: (force?: boolean) => void
   isRefreshing: boolean
   activeCategory: string | null
   onCategoryChange: (category: string | null) => void
@@ -80,7 +80,7 @@ export function StatusSummary({
           </CardHeader>
           <CardContent>
             <Button
-              onClick={onRefresh}
+              onClick={() => onRefresh(true)}
               disabled={isRefreshing}
               size="sm"
               className="w-full"

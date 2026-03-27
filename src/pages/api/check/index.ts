@@ -1,4 +1,8 @@
 import type { APIRoute } from 'astro'
+import { env } from 'cloudflare:workers'
+import { getDb } from '@/lib/db'
+
+const CACHE_TTL_SECONDS = 600
 
 const deadPatterns = [
   'paket telah berakhir',
@@ -68,9 +72,6 @@ async function fetchContent(url: string, proxyIndex: number): Promise<'online' |
 async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
   const normalizedUrl = url.replace(/^http:/, 'https:')
 
-  let serverUp = false
-  let httpCode = 0
-
   try {
     const res = await fetch(normalizedUrl, {
       method: 'GET',
@@ -81,19 +82,15 @@ async function checkSingle(url: string, index: number): Promise<'online' | 'offl
       },
       signal: AbortSignal.timeout(10000),
     })
-    httpCode = res.status
-    serverUp = true
+    if (res.status >= 500) return 'offline'
+
+    const contentResult = await fetchContent(normalizedUrl, index)
+    if (contentResult !== null) return contentResult
+
+    return 'online'
   } catch {
     return 'offline'
   }
-
-  if (httpCode >= 500) return 'offline'
-
-  const contentResult = await fetchContent(normalizedUrl, index)
-
-  if (contentResult !== null) return contentResult
-
-  return 'online'
 }
 
 function delay(ms: number): Promise<void> {
@@ -103,7 +100,7 @@ function delay(ms: number): Promise<void> {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json()
-    const { urls } = body as { urls: string[] }
+    const { urls, force = false } = body as { urls: string[]; force?: boolean }
 
     if (!urls || !Array.isArray(urls)) {
       return new Response(JSON.stringify({ error: 'urls array required' }), {
@@ -112,6 +109,7 @@ export const POST: APIRoute = async ({ request }) => {
       })
     }
 
+    const sql = getDb(env.DATABASE_URL)
     const total = urls.length
     const encoder = new TextEncoder()
     let checked = 0
@@ -124,11 +122,47 @@ export const POST: APIRoute = async ({ request }) => {
 
         sendEvent({ type: 'progress', checked: 0, total })
 
+        if (!force) {
+          try {
+            const cached = await sql`
+              SELECT domain_url, status
+              FROM domain_status
+              WHERE domain_url = ANY(${urls}) AND checked_at > NOW() - INTERVAL '${CACHE_TTL_SECONDS} seconds'
+            `
+            if (cached && cached.length > 0) {
+              const cacheMap = new Map<string, string>()
+              for (const row of cached) {
+                cacheMap.set((row as { domain_url: string }).domain_url, (row as { status: string }).status)
+              }
+              for (const url of urls) {
+                checked++
+                sendEvent({ type: 'result', url, status: (cacheMap.get(url) as 'online' | 'offline') || 'offline', checked, total })
+              }
+              sendEvent({ type: 'done', checked: total, total, from_cache: true })
+              controller.close()
+              return
+            }
+          } catch {
+            // cache miss, proceed to check
+          }
+        }
+
         for (let i = 0; i < urls.length; i++) {
           try {
             const status = await checkSingle(urls[i], i)
             checked++
             sendEvent({ type: 'result', url: urls[i], status, checked, total })
+
+            try {
+              await sql`
+                INSERT INTO domain_status (domain_url, status, checked_at)
+                VALUES (${urls[i]}, ${status}, NOW())
+                ON CONFLICT (domain_url)
+                DO UPDATE SET status = ${status}, checked_at = NOW()
+              `
+            } catch {
+              // cache write fail, not critical
+            }
           } catch {
             checked++
             sendEvent({ type: 'result', url: urls[i], status: 'offline', checked, total })
@@ -139,7 +173,7 @@ export const POST: APIRoute = async ({ request }) => {
           }
         }
 
-        sendEvent({ type: 'done', checked: total, total })
+        sendEvent({ type: 'done', checked: total, total, from_cache: false })
         controller.close()
       },
     })
