@@ -1,4 +1,6 @@
 import type { APIRoute } from 'astro'
+import { env } from 'cloudflare:workers'
+import { getDb } from '@/lib/db'
 
 const deadPatterns = [
   'paket telah berakhir',
@@ -77,6 +79,18 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const status = await checkWithProxy(url, index ?? 0)
+
+    try {
+      const sql = getDb(env.DATABASE_URL)
+      await sql`
+        INSERT INTO domain_status (domain_url, status, checked_at)
+        VALUES (${url}, ${status}, NOW())
+        ON CONFLICT (domain_url)
+        DO UPDATE SET status = ${status}, checked_at = NOW()
+      `
+    } catch {
+      // ignore DB errors, still return the result
+    }
 
     return new Response(
       JSON.stringify({ url, status }),

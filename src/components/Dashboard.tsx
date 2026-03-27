@@ -189,7 +189,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         prev.map((cat) => ({
           ...cat,
           domains: cat.domains.map((d) =>
-            d.url === domain.url ? { ...d, status, lastChecked: new Date() } : d
+            d.url === domain.url ? { ...d, status, lastChecked: new Date(), lastDeepChecked: new Date() } : d
           ),
         }))
       )
@@ -198,7 +198,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         prev.map((cat) => ({
           ...cat,
           domains: cat.domains.map((d) =>
-            d.url === domain.url ? { ...d, status: 'offline' as const, lastChecked: new Date() } : d
+            d.url === domain.url ? { ...d, status: 'offline' as const, lastChecked: new Date(), lastDeepChecked: new Date() } : d
           ),
         }))
       )

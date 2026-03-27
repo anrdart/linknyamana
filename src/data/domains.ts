@@ -5,6 +5,7 @@ export interface Domain {
   owner: string
   status: 'online' | 'offline' | 'checking'
   lastChecked?: Date
+  lastDeepChecked?: Date
 }
 
 export interface DomainCategory {

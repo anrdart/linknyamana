@@ -11,6 +11,17 @@ interface DomainCardProps {
   onClick: (domain: Domain) => void
 }
 
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
 export function DomainCard({ domain, completedCount, totalSteps, onClick }: DomainCardProps) {
   const progress = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0
   const isChecking = domain.status === 'checking'
@@ -49,6 +60,11 @@ export function DomainCard({ domain, completedCount, totalSteps, onClick }: Doma
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">{domain.name}</p>
               <p className="text-xs text-muted-foreground truncate">{domain.url}</p>
+              {domain.lastDeepChecked && (
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  Deep checked: {formatTimeAgo(domain.lastDeepChecked)}
+                </p>
+              )}
             </div>
           </div>
           <Badge
