@@ -1,6 +1,5 @@
 import { sql } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 
 export interface User {
   id: string
@@ -10,6 +9,12 @@ export interface User {
 }
 
 const SESSION_DURATION_DAYS = 30
+
+function generateToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 export async function verifyLogin(username: string, password: string): Promise<User | null> {
   const rows = await sql`
@@ -30,7 +35,7 @@ export async function verifyLogin(username: string, password: string): Promise<U
 }
 
 export async function createSession(userId: string): Promise<string> {
-  const token = crypto.randomBytes(32).toString('hex')
+  const token = generateToken()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS)
 
