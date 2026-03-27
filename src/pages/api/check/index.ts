@@ -20,12 +20,12 @@ function analyzeContent(body: string): 'online' | 'offline' {
   return 'online'
 }
 
-async function checkWithProxy(url: string, index: number): Promise<'online' | 'offline'> {
+async function checkContent(url: string, proxyIndex: number): Promise<'online' | 'offline' | null> {
   const proxies = [
     async (u: string) => {
       const res = await fetch(
         `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-        { signal: AbortSignal.timeout(12000) }
+        { signal: AbortSignal.timeout(10000) }
       )
       if (!res.ok) throw new Error('proxy error')
       const json = (await res.json()) as {
@@ -38,14 +38,14 @@ async function checkWithProxy(url: string, index: number): Promise<'online' | 'o
     async (u: string) => {
       const res = await fetch(
         `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-        { signal: AbortSignal.timeout(12000) }
+        { signal: AbortSignal.timeout(10000) }
       )
       if (!res.ok) throw new Error('proxy error')
       return analyzeContent(await res.text())
     },
   ]
 
-  const rotated = [...proxies.slice(index % proxies.length), ...proxies.slice(0, index % proxies.length)]
+  const rotated = [...proxies.slice(proxyIndex % proxies.length), ...proxies.slice(0, proxyIndex % proxies.length)]
 
   for (const proxy of rotated) {
     try {
@@ -55,24 +55,27 @@ async function checkWithProxy(url: string, index: number): Promise<'online' | 'o
     }
   }
 
-  return 'offline'
+  return null
 }
 
 async function checkSingle(url: string, index: number): Promise<'online' | 'offline'> {
   const normalizedUrl = url.replace(/^http:/, 'https:')
 
-  try {
-    const res = await fetch(normalizedUrl, {
-      method: 'HEAD',
-      redirect: 'follow',
-      signal: AbortSignal.timeout(8000),
-    })
-    if (res.ok) return 'online'
-    if (res.status >= 400 && res.status < 500) return 'online'
-  } catch {
-    // HEAD failed, try GET via proxy
-    return checkWithProxy(normalizedUrl, index)
-  }
+  const res = await fetch(normalizedUrl, {
+    method: 'HEAD',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => null)
+
+  if (!res || res.status >= 500) return 'offline'
+
+  if (res.status >= 400) return 'online'
+
+  const contentResult = await checkContent(normalizedUrl, index)
+
+  if (contentResult !== null) return contentResult
+
+  return 'online'
 }
 
 function delay(ms: number): Promise<void> {
@@ -116,7 +119,7 @@ export const POST: APIRoute = async ({ request }) => {
               for (const row of cached) {
                 cacheMap.set((row as { domain_url: string }).domain_url, (row as { status: string }).status)
               }
-              for (const url of urls) {
+              for (url of urls) {
                 checked++
                 sendEvent({ type: 'result', url, status: (cacheMap.get(url) as 'online' | 'offline') || 'offline', checked, total })
               }
