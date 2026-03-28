@@ -10,6 +10,8 @@ export const deadPatterns = [
   'there has been a critical error on this website',
   'briefly unavailable for scheduled maintenance',
   'account has been suspended',
+  'website under construction',
+  'under construction',
 ]
 
 export function analyzeContent(text: string): 'online' | 'offline' {
