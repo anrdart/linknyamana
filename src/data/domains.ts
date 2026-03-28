@@ -59,6 +59,8 @@ const alulCategories: DomainCategory[] = [
     icon: '⚖️',
     domains: [
       d('birohukum.com', 'https://birohukum.com', 'Biro Hukum', 'alul'),
+      d('birohukum.org', 'https://birohukum.org/', 'Biro Hukum', 'alul'),
+      d('birohukumindonesia.com', 'https://birohukumindonesia.com/', 'Biro Hukum', 'alul'),
     ],
   },
   {
@@ -110,6 +112,14 @@ const dymasCategories: DomainCategory[] = [
       d('ekspedisiquran.com', 'https://ekspedisiquran.com/', 'Al Quran', 'dymas'),
       d('lp.ekspedisiquran.com', 'https://lp.ekspedisiquran.com/', 'Al Quran', 'dymas'),
       d('alquransantri.com', 'http://alquransantri.com/', 'Al Quran', 'dymas'),
+      d('mushafquran.org', 'https://mushafquran.org/', 'Al Quran', 'dymas'),
+      d('quranwakaf.com', 'https://quranwakaf.com/', 'Al Quran', 'dymas'),
+      d('quranwakaf.org', 'https://quranwakaf.org/', 'Al Quran', 'dymas'),
+      d('quranindonesia.org', 'https://quranindonesia.org/', 'Al Quran', 'dymas'),
+      d('alquransantri.org', 'https://alquransantri.org/', 'Al Quran', 'dymas'),
+      d('gudangquran.com', 'http://gudangquran.com/', 'Al Quran', 'dymas'),
+      d('kurirquran.id', 'http://kurirquran.id/', 'Al Quran', 'dymas'),
+      d('quranpelosok.org', 'https://quranpelosok.org/', 'Al Quran', 'dymas'),
     ],
   },
   {
@@ -144,6 +154,7 @@ const dymasCategories: DomainCategory[] = [
     icon: '🌅',
     domains: [
       d('komunitassedekahsubuh.com', 'https://komunitassedekahsubuh.com/', 'KSS', 'dymas'),
+      d('komunitassedekahsubuh.org', 'https://komunitassedekahsubuh.org/', 'KSS', 'dymas'),
     ],
   },
 ]
