@@ -22,12 +22,14 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Domain progress table (unchanged)
+-- Domain progress table (per-user)
 CREATE TABLE IF NOT EXISTS domain_progress (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  domain_name TEXT UNIQUE NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  domain_name TEXT NOT NULL,
   completed_tasks JSONB DEFAULT '[]'::jsonb,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, domain_name)
 );
 
 -- Indexes

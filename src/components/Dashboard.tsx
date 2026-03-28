@@ -188,6 +188,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [categories])
 
+  const handleProgressChange = useCallback((domainName: string, completedTasks: number[]) => {
+    setProgressMap((prev) => ({ ...prev, [domainName]: completedTasks }))
+  }, [])
+
   const handleDomainClick = (domain: Domain) => {
     deepCheckDomain(domain)
     setSelectedDomain(domain)
@@ -384,6 +388,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         domain={selectedDomain}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        onProgressChange={handleProgressChange}
+        initialTasks={selectedDomain ? (progressMap[selectedDomain.name] ?? []) : []}
       />
     </div>
   )

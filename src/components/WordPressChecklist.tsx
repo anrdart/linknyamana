@@ -7,36 +7,20 @@ import { WORDPRESS_SETUP_STEPS } from '@/data/domains'
 
 interface WordPressChecklistProps {
   domainName: string
+  initialTasks?: number[]
+  onProgressChange?: (domainName: string, completedTasks: number[]) => void
 }
 
-export function WordPressChecklist({ domainName }: WordPressChecklistProps) {
-  const [completedTasks, setCompletedTasks] = useState<number[]>([])
-  const [loading, setLoading] = useState(true)
+export function WordPressChecklist({ domainName, initialTasks, onProgressChange }: WordPressChecklistProps) {
+  const [completedTasks, setCompletedTasks] = useState<number[]>(initialTasks ?? [])
   const [saving, setSaving] = useState<number | null>(null)
 
   const totalSteps = WORDPRESS_SETUP_STEPS.length
   const progressPercent = totalSteps > 0 ? Math.round((completedTasks.length / totalSteps) * 100) : 0
 
   useEffect(() => {
-    async function fetchProgress() {
-      try {
-        const res = await fetch(`/api/progress`)
-        if (!res.ok) throw new Error('Failed to fetch')
-        const { data } = await res.json()
-        if (data) {
-          const row = data.find((r: { domain_name: string; completed_tasks: number[] }) => r.domain_name === domainName)
-          if (row?.completed_tasks) {
-            setCompletedTasks(row.completed_tasks as number[])
-          }
-        }
-      } catch {
-        console.error('Failed to fetch progress from API')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchProgress()
-  }, [domainName])
+    setCompletedTasks(initialTasks ?? [])
+  }, [initialTasks])
 
   const handleToggle = useCallback(
     async (stepIndex: number) => {
@@ -48,7 +32,7 @@ export function WordPressChecklist({ domainName }: WordPressChecklistProps) {
       setSaving(stepIndex)
 
       try {
-        await fetch('/api/progress', {
+        const res = await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -56,23 +40,18 @@ export function WordPressChecklist({ domainName }: WordPressChecklistProps) {
             completed_tasks: newCompleted,
           }),
         })
+        if (res.ok) {
+          onProgressChange?.(domainName, newCompleted)
+        }
       } catch (err) {
         console.error('Error saving progress:', err)
+        setCompletedTasks(completedTasks)
       } finally {
         setSaving(null)
       }
     },
-    [completedTasks, domainName]
+    [completedTasks, domainName, onProgressChange]
   )
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading progress...</span>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4">

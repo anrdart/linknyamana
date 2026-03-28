@@ -14,9 +14,11 @@ interface DomainDetailDialogProps {
   domain: Domain | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onProgressChange?: (domainName: string, completedTasks: number[]) => void
+  initialTasks?: number[]
 }
 
-export function DomainDetailDialog({ domain, open, onOpenChange }: DomainDetailDialogProps) {
+export function DomainDetailDialog({ domain, open, onOpenChange, onProgressChange, initialTasks }: DomainDetailDialogProps) {
   if (!domain) return null
 
   const statusConfig = {
@@ -61,7 +63,7 @@ export function DomainDetailDialog({ domain, open, onOpenChange }: DomainDetailD
           </p>
         </div>
 
-        <WordPressChecklist domainName={domain.name} />
+        <WordPressChecklist domainName={domain.name} initialTasks={initialTasks} onProgressChange={onProgressChange} />
       </DialogContent>
     </Dialog>
   )
