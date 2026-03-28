@@ -124,6 +124,8 @@ const alulCategories: DomainCategory[] = [
       d('birohukumsurabaya.com', 'https://birohukumsurabaya.com', 'Biro Hukum', 'alul'),
       d('birohukumyogyakarta.com', 'https://birohukumyogyakarta.com', 'Biro Hukum', 'alul'),
       d('birohukummedan.com', 'https://birohukummedan.com', 'Biro Hukum', 'alul'),
+      d('almadinahgroup.com', 'https://almadinahgroup.com/', 'Biro Hukum', 'alul'),
+      d('almadinahgroup.com', 'https://almadinahgroup.com/', 'Biro Hukum', 'alul'),
     ],
   },
   {
