@@ -92,6 +92,7 @@ const alulCategories: DomainCategory[] = [
     domains: [
       d('badalumroh.com', 'https://badalumroh.com', 'Badal Umroh', 'alul'),
       d('lp.badalumroh.com', 'https://lp.badalumroh.com', 'Badal Umroh', 'alul'),
+      d('alfatihahtourtravel.com', 'https://alfatihahtourtravel.com/', 'Badal Umroh', 'alul'),
     ],
   },
   {
