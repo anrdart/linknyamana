@@ -70,6 +70,7 @@ const alulCategories: DomainCategory[] = [
       d('sewamotorbandung.info', 'https://sewamotorbandung.info', 'Rental Motor', 'alul'),
       d('sewamotorindonesia.com', 'https://sewamotorindonesia.com', 'Rental Motor', 'alul'),
       d('sewamotorindonesia.id', 'https://sewamotorindonesia.id', 'Rental Motor', 'alul'),
+      d('jogjaride.com', 'https://jogjaride.com', 'Rental Motor', 'alul'),
     ],
   },
   {
