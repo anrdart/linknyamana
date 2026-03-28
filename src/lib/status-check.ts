@@ -12,6 +12,8 @@ export const deadPatterns = [
   'account has been suspended',
   'website under construction',
   'under construction',
+  'under maintenance',
+  'website under maintenance',
 ]
 
 export function analyzeContent(text: string): 'online' | 'offline' {
