@@ -59,15 +59,16 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
       if (!res.ok) throw new Error('Failed to fetch')
       const { data } = await res.json()
       setUsers(data || [])
-      if (data && data.length > 0 && !selectedUsername) {
-        setSelectedUsername(data[0].username)
-      }
+      setSelectedUsername((prev) => {
+        if (prev) return prev
+        return data && data.length > 0 ? data[0].username : ''
+      })
     } catch {
       setErrorMessage('Gagal memuat data user')
     } finally {
       setLoading(false)
     }
-  }, [selectedUsername])
+  }, [])
 
   const fetchUserCategories = useCallback(async (username: string) => {
     if (!username) return

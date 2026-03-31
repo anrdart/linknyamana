@@ -317,13 +317,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         setInitialLoading(false)
       })
 
-    refreshTimerRef.current = setInterval(() => {
-      checkAllStatuses(false)
-    }, 900000)
-
-    return () => {
-      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
-    }
+    return () => {}
   }, [])
 
   const CONCURRENCY = import.meta.env.DEV ? 2 : 5
@@ -414,6 +408,15 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       checkAllStatuses(false)
     }
   }, [initialLoading, categories, checkAllStatuses])
+
+  useEffect(() => {
+    refreshTimerRef.current = setInterval(() => {
+      checkAllStatuses(false)
+    }, 900000)
+    return () => {
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
+    }
+  }, [checkAllStatuses])
 
   const deepCheckDomain = useCallback(async (domain: Domain) => {
     const current = categories
@@ -949,7 +952,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       <UserManagement
         open={userMgmtOpen}
         onOpenChange={setUserMgmtOpen}
-        allCategories={[...new Set(Object.values(userDomains).flat().map((c) => c.name))]}
+        allCategories={categories.map((c) => c.name)}
       />
     </div>
   )
