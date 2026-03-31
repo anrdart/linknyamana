@@ -12,17 +12,19 @@ export const GET: APIRoute = async ({ cookies }) => {
     })
   }
 
-  let userId: string
   try {
     const sql = getDb(env.DATABASE_URL)
     const user = await validateSession(sql, token)
-    if (!user) throw new Error()
-    userId = user.id as string
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
     const rows = await sql`
       SELECT domain_name, completed_tasks
       FROM domain_progress
-      WHERE user_id = ${userId}
       ORDER BY domain_name
     `
 
@@ -31,8 +33,8 @@ export const GET: APIRoute = async ({ cookies }) => {
       headers: { 'Content-Type': 'application/json' },
     })
   } catch {
-    return new Response(JSON.stringify({ error: 'Failed' }), {
-      status: 500,
+    return new Response(JSON.stringify({ data: [] }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
   }
@@ -67,12 +69,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const userId = user.id as string
-
     await sql`
-      INSERT INTO domain_progress (user_id, domain_name, completed_tasks, updated_at)
-      VALUES (${userId}, ${domain_name}, ${JSON.stringify(completed_tasks)}::jsonb, NOW())
-      ON CONFLICT (user_id, domain_name)
+      INSERT INTO domain_progress (domain_name, completed_tasks, updated_at)
+      VALUES (${domain_name}, ${JSON.stringify(completed_tasks)}::jsonb, NOW())
+      ON CONFLICT (domain_name)
       DO UPDATE SET
         completed_tasks = ${JSON.stringify(completed_tasks)}::jsonb,
         updated_at = NOW()
