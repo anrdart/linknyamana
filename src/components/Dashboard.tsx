@@ -638,15 +638,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   return (
     <div className="flex h-screen bg-background">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 lg:hidden"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-      >
-        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
@@ -802,8 +793,24 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         />
       )}
 
-      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
-        <div className="p-4 lg:p-6 space-y-6">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-card px-4 py-3 lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-bold text-sm truncate">LinkNyaMana</h1>
+            <p className="text-[10px] text-muted-foreground truncate">{user.display_name}</p>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -885,7 +892,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             })}
           </div>
         </div>
-      </main>
+        </main>
+      </div>
 
       <DomainDetailDialog
         domain={selectedDomain}
