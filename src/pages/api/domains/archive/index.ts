@@ -22,17 +22,18 @@ export const GET: APIRoute = async ({ cookies }) => {
       })
     }
 
-    const rows = await sql`
-      SELECT domain_name, completed_tasks
-      FROM domain_progress
-      ORDER BY domain_name
+    const data = await sql`
+      SELECT domain_url, archived_at
+      FROM archived_domains
+      ORDER BY archived_at DESC
     `
 
-    return new Response(JSON.stringify({ data: rows }), {
+    return new Response(JSON.stringify({ data }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
-  } catch {
+  } catch (err) {
+    console.error('Error fetching archived domains:', err)
     return new Response(JSON.stringify({ data: [] }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -59,31 +60,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const body = await request.json()
-    const { domain_name, completed_tasks } = body
+    if (user.username !== 'staffwebdev') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
-    if (!domain_name || !Array.isArray(completed_tasks)) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+    const body = await request.json()
+    const { domain_url, archived } = body || {}
+
+    if (!domain_url) {
+      return new Response(JSON.stringify({ error: 'domain_url required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    await sql`
-      INSERT INTO domain_progress (domain_name, completed_tasks, updated_at)
-      VALUES (${domain_name}, ${JSON.stringify(completed_tasks)}::jsonb, NOW())
-      ON CONFLICT (domain_name)
-      DO UPDATE SET
-        completed_tasks = ${JSON.stringify(completed_tasks)}::jsonb,
-        updated_at = NOW()
-    `
+    if (archived === true) {
+      await sql`
+        INSERT INTO archived_domains (domain_url)
+        VALUES (${domain_url})
+        ON CONFLICT (domain_url) DO NOTHING
+      `
+      await sql`
+        UPDATE custom_domains SET archived = true WHERE url = ${domain_url}
+      `
+    } else {
+      await sql`
+        DELETE FROM archived_domains WHERE domain_url = ${domain_url}
+      `
+      await sql`
+        UPDATE custom_domains SET archived = false WHERE url = ${domain_url}
+      `
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
-  } catch (error) {
-    console.error('Error saving progress:', error)
+  } catch (err) {
+    console.error('Error updating archive:', err)
     return new Response(JSON.stringify({ error: 'Failed' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

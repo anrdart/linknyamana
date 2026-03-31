@@ -13,7 +13,14 @@ export default defineConfig({
   adapter: cloudflare(),
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      noExternal: ['bcryptjs'],
+    },
+    optimizeDeps: {
+      exclude: ['bcryptjs'],
+    },
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': __dirname + './src',
       },
