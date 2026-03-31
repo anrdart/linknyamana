@@ -6,6 +6,10 @@ export interface Domain {
   status: 'online' | 'offline' | 'checking'
   lastChecked?: Date
   lastDeepChecked?: Date
+  registrationDate?: string
+  expiryDate?: string
+  whatsappNotify?: boolean
+  isArchived?: boolean
 }
 
 export interface DomainCategory {
