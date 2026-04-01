@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Loader2, CheckCircle2, Circle } from 'lucide-react'
 import { WORDPRESS_SETUP_STEPS } from '@/data/domains'
 
 interface WordPressChecklistProps {
@@ -17,6 +18,17 @@ export function WordPressChecklist({ domainName, initialTasks, onProgressChange 
 
   const totalSteps = WORDPRESS_SETUP_STEPS.length
   const progressPercent = totalSteps > 0 ? Math.round((completedTasks.length / totalSteps) * 100) : 0
+
+  const completedSet = useMemo(() => new Set(completedTasks), [completedTasks])
+
+  const groupedSteps = useMemo(() => {
+    const groups: Record<string, typeof WORDPRESS_SETUP_STEPS[number][]> = {}
+    for (const step of WORDPRESS_SETUP_STEPS) {
+      if (!groups[step.category]) groups[step.category] = []
+      groups[step.category].push(step)
+    }
+    return groups
+  }, [])
 
   useEffect(() => {
     setCompletedTasks(initialTasks ?? [])
@@ -43,8 +55,7 @@ export function WordPressChecklist({ domainName, initialTasks, onProgressChange 
         if (res.ok) {
           onProgressChange?.(domainName, newCompleted)
         }
-      } catch (err) {
-        console.error('Error saving progress:', err)
+      } catch {
         setCompletedTasks(completedTasks)
       } finally {
         setSaving(null)
@@ -66,39 +77,72 @@ export function WordPressChecklist({ domainName, initialTasks, onProgressChange 
       </div>
 
       <ScrollArea className="h-[400px] pr-4">
-        <div className="space-y-2">
-          {WORDPRESS_SETUP_STEPS.map((step, index) => {
-            const isChecked = completedTasks.includes(index)
-            const isSaving = saving === index
+        <div className="space-y-4">
+          {Object.entries(groupedSteps).map(([category, steps]) => {
+            const globalIndices = steps.map(
+              (s) => WORDPRESS_SETUP_STEPS.indexOf(s)
+            )
+            const doneCount = globalIndices.filter((i) => completedSet.has(i)).length
 
             return (
-              <label
-                key={index}
-                className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent/50"
-              >
-                <div className="relative">
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={() => handleToggle(index)}
-                    disabled={isSaving}
-                    className={isChecked ? 'border-emerald-500 bg-emerald-500 text-white' : ''}
-                  />
-                  {isSaving && (
-                    <Loader2 className="absolute -right-5 top-0 h-3 w-3 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span
-                    className={`text-sm ${
-                      isChecked
-                        ? 'text-muted-foreground line-through'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    {index + 1}. {step}
+              <div key={category}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="text-xs font-medium">
+                    {category}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {doneCount}/{steps.length}
                   </span>
                 </div>
-              </label>
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="w-8 px-2 py-1.5 text-center font-medium">#</th>
+                        <th className="w-8 px-1 py-1.5"></th>
+                        <th className="px-2 py-1.5 text-left font-medium">Tugas</th>
+                        <th className="px-2 py-1.5 text-left font-medium hidden sm:table-cell">Lokasi Menu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {steps.map((step) => {
+                        const idx = WORDPRESS_SETUP_STEPS.indexOf(step)
+                        const isChecked = completedSet.has(idx)
+                        const isSaving = saving === idx
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="border-b last:border-b-0 transition-colors hover:bg-accent/30 cursor-pointer"
+                            onClick={() => handleToggle(idx)}
+                          >
+                            <td className="px-2 py-1.5 text-center text-muted-foreground">
+                              {idx + 1}
+                            </td>
+                            <td className="px-1 py-1.5 text-center">
+                              <div className="relative inline-flex">
+                                {isSaving ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                ) : isChecked ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                ) : (
+                                  <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                )}
+                              </div>
+                            </td>
+                            <td className={`px-2 py-1.5 ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
+                              {step.task}
+                            </td>
+                            <td className="px-2 py-1.5 text-muted-foreground hidden sm:table-cell">
+                              {step.location}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )
           })}
         </div>

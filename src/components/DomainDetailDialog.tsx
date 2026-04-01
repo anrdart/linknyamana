@@ -236,7 +236,7 @@ export function DomainDetailDialog({
             WordPress Setup Checklist ({WORDPRESS_SETUP_STEPS.length} steps)
           </h4>
           <p className="text-xs text-muted-foreground">
-            Track your WordPress setup progress. Changes are saved automatically to the database.
+            Track your WordPress setup progress. Klik baris untuk menandai selesai. Perubahan tersimpan otomatis.
           </p>
         </div>
 

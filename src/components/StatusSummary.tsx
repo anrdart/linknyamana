@@ -22,6 +22,7 @@ interface StatusSummaryProps {
   onNotifyExpiring?: () => void
   isNotifying?: boolean
   notifyResult?: { sent: number; failed: number } | null
+  isStaffwebdev?: boolean
 }
 
 export function StatusSummary({
@@ -39,6 +40,7 @@ export function StatusSummary({
   onNotifyExpiring,
   isNotifying,
   notifyResult,
+  isStaffwebdev,
 }: StatusSummaryProps) {
   const [localSearch, setLocalSearch] = useState(searchQuery)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -170,20 +172,22 @@ export function StatusSummary({
               )}
               Refresh
             </Button>
-            <Button
-              onClick={() => onNotifyExpiring?.()}
-              disabled={isNotifying || isRefreshing}
-              size="sm"
-              variant="outline"
-              className="w-full"
-            >
-              {isNotifying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Bell className="h-4 w-4" />
-              )}
-              Check & Notify
-            </Button>
+            {isStaffwebdev && (
+              <Button
+                onClick={() => onNotifyExpiring?.()}
+                disabled={isNotifying || isRefreshing}
+                size="sm"
+                variant="outline"
+                className="w-full"
+              >
+                {isNotifying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Bell className="h-4 w-4" />
+                )}
+                Check & Notify
+              </Button>
+            )}
             {notifyResult && (
               <p className="text-[10px] text-muted-foreground">
                 <span className="text-green-600">{notifyResult.sent} terkirim</span>

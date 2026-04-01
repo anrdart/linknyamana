@@ -56,7 +56,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [sidebarFilter, setSidebarFilter] = useState('')
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const hasInitialChecked = useRef(false)
 
   const fetchAllProgress = useCallback(async () => {
     try {
@@ -401,13 +400,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     setCheckProgress({ checked: total, total })
     abortRef.current = null
   }, [categories, isRefreshing])
-
-  useEffect(() => {
-    if (!initialLoading && !hasInitialChecked.current && categories.length > 0) {
-      hasInitialChecked.current = true
-      checkAllStatuses(false)
-    }
-  }, [initialLoading, categories, checkAllStatuses])
 
   useEffect(() => {
     refreshTimerRef.current = setInterval(() => {
@@ -837,9 +829,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             onSearchQueryChange={setSearchQuery}
             expiryFilter={expiryFilter}
             onExpiryFilterChange={setExpiryFilter}
-            onNotifyExpiring={handleNotifyExpiring}
+            onNotifyExpiring={user.username === 'staffwebdev' ? handleNotifyExpiring : undefined}
             isNotifying={isNotifying}
             notifyResult={notifyResult}
+            isStaffwebdev={user.username === 'staffwebdev'}
           />
 
           {isRefreshing && checkProgress.total > 0 && (
