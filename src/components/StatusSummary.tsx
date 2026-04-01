@@ -21,7 +21,7 @@ interface StatusSummaryProps {
   onExpiryFilterChange: (filter: string | null) => void
   onNotifyExpiring?: () => void
   isNotifying?: boolean
-  notifyResult?: { sent: number; failed: number } | null
+  notifyResult?: { sent: number; failed: number; errors?: string[] } | null
   isStaffwebdev?: boolean
 }
 
@@ -189,12 +189,19 @@ export function StatusSummary({
               </Button>
             )}
             {notifyResult && (
-              <p className="text-[10px] text-muted-foreground">
-                <span className="text-green-600">{notifyResult.sent} terkirim</span>
-                {notifyResult.failed > 0 && (
-                  <>, <span className="text-destructive">{notifyResult.failed} gagal</span></>
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="text-green-600">{notifyResult.sent} terkirim</span>
+                  {notifyResult.failed > 0 && (
+                    <>, <span className="text-destructive">{notifyResult.failed} gagal</span></>
+                  )}
+                </p>
+                {notifyResult.errors && notifyResult.errors.length > 0 && (
+                  <p className="text-[9px] text-destructive/80 leading-tight">
+                    {notifyResult.errors[0]}
+                  </p>
                 )}
-              </p>
+              </div>
             )}
           </CardContent>
         </Card>

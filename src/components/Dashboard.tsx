@@ -46,7 +46,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [initialLoading, setInitialLoading] = useState(true)
   const [userMgmtOpen, setUserMgmtOpen] = useState(false)
   const [isNotifying, setIsNotifying] = useState(false)
-  const [notifyResult, setNotifyResult] = useState<{ sent: number; failed: number } | null>(null)
+  const [notifyResult, setNotifyResult] = useState<{ sent: number; failed: number; errors?: string[] } | null>(null)
   const [addDomainOpen, setAddDomainOpen] = useState(false)
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [editDomain, setEditDomain] = useState<Domain | null>(null)
@@ -480,6 +480,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
       let sent = 0
       let failed = 0
+      const allErrors: string[] = []
       for (const domain of data) {
         try {
           const notifRes = await fetch('/api/notifications/send', {
@@ -497,14 +498,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           if (notifRes.ok) {
             sent += notifData.sent ?? 0
             failed += notifData.failed ?? 0
+            if (notifData.errors?.length) allErrors.push(...notifData.errors)
           } else {
             failed++
+            allErrors.push(`${domain.domain_url}: API ${notifRes.status}`)
           }
         } catch {
           failed++
+          allErrors.push(`${domain.domain_url}: Network error`)
         }
       }
-      setNotifyResult({ sent, failed })
+      setNotifyResult({ sent, failed, errors: allErrors.length > 0 ? allErrors : undefined })
     } catch {
       setNotifyResult({ sent: 0, failed: 0 })
     }
