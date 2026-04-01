@@ -41,9 +41,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const fromAddress = env.NOTIFICATION_EMAIL
-      ? `LinkNyaMana <${env.NOTIFICATION_EMAIL}>`
-      : 'onboarding@resend.dev'
+    const fromAddress = 'LinkNyaMana <noreply@ekalliptus.com>'
 
     let recipients: string[] = []
     try {
