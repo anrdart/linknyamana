@@ -12,7 +12,7 @@ import { BulkImportDialog } from '@/components/BulkImportDialog'
 import { ProgressReportDialog } from '@/components/ProgressReportDialog'
 import { AnalyticsPanel } from '@/components/AnalyticsPanel'
 import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown } from 'lucide-react'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -80,6 +80,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [darkMode, setDarkMode] = useState(() => typeof window !== 'undefined' ? getTheme() === 'dark' : false)
   const [sortBy, setSortBy] = useState<'default' | 'status' | 'expiry' | 'name'>('default')
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false)
+  const [adminToolsOpen, setAdminToolsOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -775,82 +777,62 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </button>
           </nav>
 
-          {(canEditUser(user) || isAdminUser(user)) && (
-            <div className="border-t p-3 space-y-1">
-              {canEditUser(user) && (
-                <>
-                  <button
-                    onClick={() => { setAddCategoryOpen(true); setSidebarOpen(false) }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Tambah Kategori
-                  </button>
-                  <button
-                    onClick={() => { setAddDomainOpen(true); setSidebarOpen(false) }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Tambah Domain
-                  </button>
-                </>
-              )}
-              {canEditUser(user) && (
-                <button
-                  onClick={() => { setBulkImportOpen(true); setSidebarOpen(false) }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  Import / Export
-                </button>
-              )}
+          {canEditUser(user) && (
+            <div className="border-t px-3 py-2">
               <button
-                onClick={() => { setProgressReportOpen(true); setSidebarOpen(false) }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                onClick={() => setAdminToolsOpen(!adminToolsOpen)}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               >
-                <BarChart3 className="h-4 w-4" />
-                Progress Report
+                <Settings className="h-3.5 w-3.5" />
+                <span className="flex-1 text-left">Kelola</span>
+                <ChevronDown className={cn('h-3 w-3 transition-transform', adminToolsOpen && 'rotate-180')} />
               </button>
-              {isAdminUser(user) && (
-                <button
-                  onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  Management User
-                </button>
-              )}
+              <div className={cn(
+                'overflow-hidden transition-all duration-200',
+                adminToolsOpen ? 'max-h-60 opacity-100 mt-1' : 'max-h-0 opacity-0'
+              )}>
+                <div className="space-y-0.5 pl-2">
+                  <button onClick={() => { setAddDomainOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <Plus className="h-3 w-3" /> Domain
+                  </button>
+                  <button onClick={() => { setAddCategoryOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <Plus className="h-3 w-3" /> Kategori
+                  </button>
+                  <button onClick={() => { setBulkImportOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <Upload className="h-3 w-3" /> Import / Export
+                  </button>
+                  <button onClick={() => { setProgressReportOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                    <BarChart3 className="h-3 w-3" /> Progress Report
+                  </button>
+                  {isStaffUser(user) && (
+                    <button onClick={() => { setNotifSettingsOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <Bell className="h-3 w-3" /> Notifikasi
+                    </button>
+                  )}
+                  {isAdminUser(user) && (
+                    <button onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <Shield className="h-3 w-3" /> User
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="shrink-0 border-t p-3 space-y-2 overflow-y-auto max-h-[40vh]">
-            {isStaffUser(user) && (
-              <NotificationSettings />
-            )}
-            <button
-              onClick={() => { setPasswordDialogOpen(true); setSidebarOpen(false) }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              <KeyRound className="h-4 w-4" />
-              Ganti Password
+          <div className="shrink-0 border-t px-3 py-2 flex items-center gap-1">
+            <button onClick={() => { setPasswordDialogOpen(true); setSidebarOpen(false) }} className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="Ganti Password">
+              <KeyRound className="h-3.5 w-3.5" />
             </button>
-            <button
-              onClick={handleToggleDarkMode}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
+            <button onClick={handleToggleDarkMode} className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title={darkMode ? 'Light Mode' : 'Dark Mode'}>
+              {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            <button
-              onClick={onLogout}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Keluar
+            <button onClick={onLogout} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Keluar">
+              <LogOut className="h-3.5 w-3.5" />
             </button>
-            <p className="text-[10px] text-muted-foreground px-1">
-              Auto-refresh 15m &middot; <kbd className="text-[9px] bg-muted px-1 rounded">/</kbd> search &middot; <kbd className="text-[9px] bg-muted px-1 rounded">r</kbd> refresh
-            </p>
+            <span className="flex-1" />
+            <span className="text-[9px] text-muted-foreground" title="/ search · r refresh · Esc close">
+              {user.display_name.split(' ')[0]}
+            </span>
           </div>
         </div>
       </aside>
@@ -1049,6 +1031,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
       />
+      {notifSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setNotifSettingsOpen(false)}>
+          <div className="bg-card rounded-xl border shadow-lg p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">Pengaturan Notifikasi</h3>
+              <button onClick={() => setNotifSettingsOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <NotificationSettings />
+          </div>
+        </div>
+      )}
       <BulkImportDialog
         open={bulkImportOpen}
         onOpenChange={setBulkImportOpen}
