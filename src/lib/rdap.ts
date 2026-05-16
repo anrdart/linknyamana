@@ -15,6 +15,7 @@ const RDAP_SERVERS: Record<string, string> = {
   'online': 'https://rdap.centralnic.com/online/domain/',
   'store': 'https://rdap.centralnic.com/store/domain/',
   'tech': 'https://rdap.centralnic.com/tech/domain/',
+  'work': 'https://rdap.centralnic.com/work/domain/',
   // Indonesian ccTLDs — all managed by PANDI
   'id': 'https://rdap.pandi.or.id/domain/',
   'web.id': 'https://rdap.pandi.or.id/domain/',
