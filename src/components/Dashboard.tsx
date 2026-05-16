@@ -823,36 +823,34 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </div>
           )}
 
-          <div className="border-t p-3 space-y-2">
+          <div className="shrink-0 border-t p-3 space-y-2 overflow-y-auto max-h-[40vh]">
             {isStaffUser(user) && (
               <NotificationSettings />
             )}
             <button
               onClick={() => { setPasswordDialogOpen(true); setSidebarOpen(false) }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <KeyRound className="h-4 w-4" />
               Ganti Password
             </button>
             <button
-              onClick={onLogout}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Keluar
-            </button>
-            <button
               onClick={handleToggleDarkMode}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {darkMode ? 'Light Mode' : 'Dark Mode'}
             </button>
-            <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-[10px] text-muted-foreground">
-                Auto-refresh every 15 minutes &middot; <kbd className="text-[9px] bg-background px-1 rounded">/</kbd> search &middot; <kbd className="text-[9px] bg-background px-1 rounded">r</kbd> refresh
-              </p>
-            </div>
+            <button
+              onClick={onLogout}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Keluar
+            </button>
+            <p className="text-[10px] text-muted-foreground px-1">
+              Auto-refresh 15m &middot; <kbd className="text-[9px] bg-muted px-1 rounded">/</kbd> search &middot; <kbd className="text-[9px] bg-muted px-1 rounded">r</kbd> refresh
+            </p>
           </div>
         </div>
       </aside>
