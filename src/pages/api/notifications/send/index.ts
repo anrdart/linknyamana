@@ -4,6 +4,15 @@ import { getDb } from '@/lib/db'
 import { validateSession } from '@/lib/auth'
 import { sendEmail } from '@/lib/email'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   const token = cookies.get('session')?.value
   if (!token) {
@@ -33,6 +42,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
+    const safeDomainName = escapeHtml(String(domain_name))
+    const safeDomainUrl = escapeHtml(String(domain_url))
+    const safeDaysRemaining = Number.isFinite(Number(days_remaining)) ? Number(days_remaining) : null
+
     const resendApiKey = env.RESEND_API_KEY as string | undefined
     if (!resendApiKey) {
       return new Response(JSON.stringify({ error: 'Missing RESEND_API_KEY' }), {
@@ -59,7 +72,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const urgency = (days_remaining ?? 99) <= 7 ? 'urgent' : (days_remaining ?? 99) <= 14 ? 'warning' : 'normal'
+    const urgency = (safeDaysRemaining ?? 99) <= 7 ? 'urgent' : (safeDaysRemaining ?? 99) <= 14 ? 'warning' : 'normal'
     const urgencyColors = {
       urgent: { bg: '#fef2f2', border: '#fca5a5', badge: '#dc2626', badgeText: '#fff', text: '#991b1b' },
       warning: { bg: '#fffbeb', border: '#fcd34d', badge: '#d97706', badgeText: '#fff', text: '#92400e' },
@@ -75,8 +88,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       : '-'
 
     const subject = urgency === 'urgent'
-      ? `[URGENT] Domain ${domain_name} expired dalam ${days_remaining} hari!`
-      : `[Reminder] Domain ${domain_name} akan expired dalam ${days_remaining} hari`
+      ? `[URGENT] Domain ${domain_name} expired dalam ${safeDaysRemaining ?? '?'} hari!`
+      : `[Reminder] Domain ${domain_name} akan expired dalam ${safeDaysRemaining ?? '?'} hari`
 
     const html = `
 <!DOCTYPE html>
@@ -101,7 +114,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     <table cellpadding="0" cellspacing="0" style="background-color:${c.badge}; border-radius:8px;">
                       <tr>
                         <td style="padding:8px 16px; font-size:20px; font-weight:800; color:${c.badgeText}; text-align:center; line-height:1;">
-                          ${days_remaining ?? '?'}
+                          ${safeDaysRemaining ?? '?'}
                         </td>
                       </tr>
                       <tr>
@@ -123,9 +136,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 <tr>
                   <td style="padding:20px 24px;">
                     <p style="margin:0 0 4px 0; font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Nama Domain</p>
-                    <p style="margin:0; font-size:20px; color:${c.text}; font-weight:700;">${domain_name}</p>
+                    <p style="margin:0; font-size:20px; color:${c.text}; font-weight:700;">${safeDomainName}</p>
                     <p style="margin:6px 0 0 0; font-size:13px; color:#64748b;">
-                      <a href="${domain_url}" style="color:#2563eb; text-decoration:none;">${domain_url}</a>
+                      <a href="${safeDomainUrl}" style="color:#2563eb; text-decoration:none;">${safeDomainUrl}</a>
                     </p>
                   </td>
                 </tr>

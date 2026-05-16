@@ -7,7 +7,7 @@ import { AddDomainDialog } from '@/components/AddDomainDialog'
 import { EditDomainDialog } from '@/components/EditDomainDialog'
 import { NotificationSettings } from '@/components/NotificationSettings'
 import { UserManagement } from '@/components/UserManagement'
-import { userDomains, type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
+import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
 import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -20,6 +20,10 @@ export interface UserInfo {
   role: string
 }
 
+function isStaffUser(user: UserInfo): boolean {
+  return user.role === 'admin' || isStaffUser(user)
+}
+
 interface DashboardProps {
   user: UserInfo
   onLogout: () => void
@@ -28,7 +32,7 @@ interface DashboardProps {
 type StatusFilter = 'all' | 'online' | 'offline' | 'checking'
 
 interface ProgressMap {
-  [domainName: string]: number[]
+  [domainKey: string]: number[]
 }
 
 export default function Dashboard({ user, onLogout }: DashboardProps) {
@@ -56,6 +60,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [sidebarFilter, setSidebarFilter] = useState('')
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const categoriesRef = useRef(categories)
+  categoriesRef.current = categories
+  const isRefreshingRef = useRef(isRefreshing)
+  isRefreshingRef.current = isRefreshing
 
   const fetchAllProgress = useCallback(async () => {
     try {
@@ -65,7 +73,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       if (data) {
         const map: ProgressMap = {}
         for (const row of data) {
-          map[row.domain_name as string] = row.completed_tasks as number[]
+          map[row.domain_url as string] = row.completed_tasks as number[]
         }
         setProgressMap(map)
       }
@@ -106,7 +114,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               {
                 registrationDate: formatDateForInput(row.registration_date),
                 expiryDate: formatDateForInput(row.expiry_date),
-                whatsappNotify: row.whatsapp_notify,
+                emailNotify: row.email_notify,
               }
             ]
           })
@@ -123,7 +131,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               ...domain,
               registrationDate: meta.registrationDate ?? undefined,
               expiryDate: meta.expiryDate ?? undefined,
-              whatsappNotify: meta.whatsappNotify,
+              emailNotify: meta.emailNotify,
             }
           }),
         }))
@@ -162,7 +170,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [])
 
-  const fetchCustomData = useCallback(async () => {
+  const fetchDomains = useCallback(async () => {
     try {
       const [domainsRes, categoriesRes, archiveRes] = await Promise.all([
         fetch('/api/domains/custom'),
@@ -170,145 +178,58 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         fetch('/api/domains/archive'),
       ])
 
-      if (!domainsRes.ok) {
-        throw new Error('Failed to fetch custom domains')
-      }
+      if (!domainsRes.ok) throw new Error('Failed to fetch domains')
 
-      const { data: customDomains } = await domainsRes.json()
-      const domains = customDomains || []
+      const { data: domains } = await domainsRes.json()
+      const domainList = domains || []
 
-      let categories: any[] = []
+      let dbCategories: any[] = []
       if (categoriesRes.ok) {
-        const { data: customCategories } = await categoriesRes.json()
-        categories = customCategories || []
+        const { data } = await categoriesRes.json()
+        dbCategories = data || []
       }
 
       let archiveData: any[] = []
       if (archiveRes.ok) {
-        const archiveJson = await archiveRes.json()
-        archiveData = archiveJson?.data || []
+        const { data } = await archiveRes.json()
+        archiveData = data || []
       }
 
       const archivedUrls = new Set(
-        archiveData.map((r: any) => {
-          const normalized = r.domain_url?.replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase()
-          return normalized
-        })
+        archiveData.map((r: any) => normalizeUrlForMatching(r.domain_url || ''))
       )
 
-      if (Array.isArray(domains)) {
-        const allCatNames = new Set([
-          ...categories.map((c: { name: string }) => c.name),
-          ...domains.map((d: { category_name: string }) => d.category_name),
-        ])
+      const allCatNames = new Set([
+        ...dbCategories.map((c: { name: string }) => c.name),
+        ...domainList.map((d: { category_name: string }) => d.category_name),
+      ])
 
-        const customCats: DomainCategory[] = [...allCatNames].map((catName) => {
-          const catFromDb = categories.find((c: { name: string; icon: string }) => c.name === catName)
-          return {
-            name: catName,
-            icon: catFromDb?.icon || '📁',
-            domains: domains
-              .filter((d: { category_name: string }) => d.category_name === catName)
-              .map((d: { name: string; url: string; category_name: string; owner: string; archived: boolean }) => ({
-                name: d.name,
-                url: d.url,
-                category: d.category_name,
-                owner: d.owner,
-                status: 'checking' as const,
-                isArchived: d.archived ?? false,
-              })),
-          }
-        })
-
-        setCategories((prev) => {
-          const existingNames = new Set(prev.map((c) => c.name))
-          const newCats = customCats.filter((c) => !existingNames.has(c.name))
-
-          const merged = prev.map((existingCat) => {
-            const customCat = customCats.find((c) => c.name === existingCat.name)
-            if (!customCat) return existingCat
-
-            const existingNormalizedUrls = new Set(existingCat.domains.map((d) => normalizeUrlForMatching(d.url)))
-            const newDomains = customCat.domains.filter((d) => !existingNormalizedUrls.has(normalizeUrlForMatching(d.url)))
-            if (newDomains.length === 0) return existingCat
-
-            return {
-              ...existingCat,
-              domains: [...existingCat.domains, ...newDomains],
-            }
-          })
-
-          const withArchive = [...merged, ...newCats].map((cat) => ({
-            ...cat,
-            domains: cat.domains.map((d) => ({
-              ...d,
-              isArchived: d.isArchived || archivedUrls.has(normalizeUrlForMatching(d.url)),
+      const result: DomainCategory[] = [...allCatNames].map((catName) => {
+        const catFromDb = dbCategories.find((c: { name: string }) => c.name === catName)
+        return {
+          name: catName,
+          icon: catFromDb?.icon || '📁',
+          domains: domainList
+            .filter((d: { category_name: string }) => d.category_name === catName)
+            .map((d: { name: string; url: string; category_name: string; owner: string; archived: boolean }) => ({
+              name: d.name,
+              url: d.url,
+              category: d.category_name,
+              owner: d.owner,
+              status: 'checking' as const,
+              isArchived: d.archived || archivedUrls.has(normalizeUrlForMatching(d.url)),
             })),
-          }))
+        }
+      })
 
-          return withArchive
-        })
-      }
+      setCategories(result)
     } catch {
-      console.error('Failed to fetch custom data from API')
+      console.error('Failed to fetch domains')
     }
   }, [])
 
-  const fetchUserCategories = useCallback(async () => {
-    if (user.username === 'staffwebdev') {
-      const allCats = Object.values(userDomains).flat()
-      const merged: DomainCategory[] = []
-      for (const cat of allCats) {
-        const existing = merged.find((m) => m.name === cat.name)
-        if (!existing) {
-          merged.push({ ...cat, domains: [...cat.domains] })
-        } else {
-          const existingUrls = new Set(existing.domains.map((d) => normalizeUrlForMatching(d.url)))
-          for (const d of cat.domains) {
-            if (!existingUrls.has(normalizeUrlForMatching(d.url))) {
-              existing.domains.push(d)
-            }
-          }
-        }
-      }
-      setCategories(merged)
-      return
-    }
-
-    try {
-      const res = await fetch('/api/users/categories?username=' + encodeURIComponent(user.username))
-      if (!res.ok) {
-        setCategories(userDomains[user.username] ?? [])
-        return
-      }
-      const { data } = await res.json()
-      const assignedCatNames = new Set((data || []).map((r: { category_name: string }) => r.category_name))
-
-      const allCats = Object.values(userDomains).flat()
-      const merged: DomainCategory[] = []
-      for (const cat of allCats) {
-        if (!assignedCatNames.has(cat.name)) continue
-        const existing = merged.find((m) => m.name === cat.name)
-        if (!existing) {
-          merged.push({ ...cat, domains: [...cat.domains] })
-        } else {
-          const existingUrls = new Set(existing.domains.map((d) => normalizeUrlForMatching(d.url)))
-          for (const d of cat.domains) {
-            if (!existingUrls.has(normalizeUrlForMatching(d.url))) {
-              existing.domains.push(d)
-            }
-          }
-        }
-      }
-      setCategories(merged)
-    } catch {
-      setCategories(userDomains[user.username] ?? [])
-    }
-  }, [user.username])
-
   useEffect(() => {
-    fetchUserCategories()
-      .then(() => fetchCustomData())
+    fetchDomains()
       .then(() => fetchDomainMeta())
       .then(() => fetchCachedStatus())
       .then(() => fetchAllProgress())
@@ -322,11 +243,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const CONCURRENCY = import.meta.env.DEV ? 2 : 5
 
   const checkAllStatuses = useCallback(async (force = false) => {
-    if (isRefreshing) return
+    if (isRefreshingRef.current) return
 
     setIsRefreshing(true)
 
-    const allDomains = categories.flatMap((c) => c.domains)
+    const allDomains = categoriesRef.current.flatMap((c) => c.domains)
     const total = allDomains.length
     let checked = 0
     setCheckProgress({ checked: 0, total })
@@ -399,7 +320,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     setIsRefreshing(false)
     setCheckProgress({ checked: total, total })
     abortRef.current = null
-  }, [categories, isRefreshing])
+  }, [])
 
   useEffect(() => {
     refreshTimerRef.current = setInterval(() => {
@@ -408,10 +329,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
     }
-  }, [checkAllStatuses])
+  }, [])
 
   const deepCheckDomain = useCallback(async (domain: Domain) => {
-    const current = categories
+    const current = categoriesRef.current
       .flatMap((c) => c.domains)
       .find((d) => d.url === domain.url)
     if (!current) return
@@ -452,10 +373,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         }))
       )
     }
-  }, [categories])
+  }, [])
 
-  const handleProgressChange = useCallback((domainName: string, completedTasks: number[]) => {
-    setProgressMap((prev) => ({ ...prev, [domainName]: completedTasks }))
+  const handleProgressChange = useCallback((domainUrl: string, completedTasks: number[]) => {
+    setProgressMap((prev) => ({ ...prev, [domainUrl]: completedTasks }))
   }, [])
 
   const handleDomainClick = (domain: Domain) => {
@@ -481,7 +402,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       let sent = 0
       let failed = 0
       const allErrors: string[] = []
-      for (const domain of data) {
+
+      const sendOne = async (domain: typeof data[number]) => {
         try {
           const notifRes = await fetch('/api/notifications/send', {
             method: 'POST',
@@ -507,6 +429,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           failed++
           allErrors.push(`${domain.domain_url}: Network error`)
         }
+      }
+
+      const BATCH_SIZE = 5
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        await Promise.all(data.slice(i, i + BATCH_SIZE).map(sendOne))
       }
       setNotifyResult({ sent, failed, errors: allErrors.length > 0 ? allErrors : undefined })
     } catch {
@@ -551,14 +478,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const handleDeleteDomain = useCallback(async (domain: Domain) => {
     try {
+      setCategories((prev) =>
+        prev.map((cat) => ({
+          ...cat,
+          domains: cat.domains.filter((d) => normalizeUrlForMatching(d.url) !== normalizeUrlForMatching(domain.url)),
+        })).filter((cat) => cat.domains.length > 0)
+      )
+
       const res = await fetch('/api/domains/custom')
       if (!res.ok) return
       const { data } = await res.json()
-      const match = (data || []).find((d: { url: string }) => {
-        const normalizedUrl = d.url.replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase()
-        const domainNormalized = domain.url.replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase()
-        return normalizedUrl === domainNormalized
-      })
+      const match = (data || []).find((d: { url: string }) =>
+        normalizeUrlForMatching(d.url) === normalizeUrlForMatching(domain.url)
+      )
       if (!match) return
 
       await fetch('/api/domains/custom', {
@@ -566,12 +498,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: match.id }),
       })
-
-      await fetchCustomData()
     } catch {
-      console.error('Failed to delete domain')
+      fetchDomains()
     }
-  }, [fetchCustomData])
+  }, [fetchDomains])
 
   const handleEditDomain = useCallback((domain: Domain) => {
     setEditDomain(domain)
@@ -582,7 +512,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     ? categories.filter((c) => c.name === activeCategory)
     : categories
 
-  const getFilteredDomains = (cat: typeof userDomains[string][number]) => {
+  const getFilteredDomains = (cat: DomainCategory) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -739,7 +669,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </button>
           </nav>
 
-          {user.username === 'staffwebdev' && (
+          {isStaffUser(user) && (
             <div className="border-t p-3 space-y-1">
               <button
                 onClick={() => { setAddCategoryOpen(true); setSidebarOpen(false) }}
@@ -766,7 +696,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           )}
 
           <div className="border-t p-3 space-y-2">
-            {user.username === 'staffwebdev' && (
+            {isStaffUser(user) && (
               <NotificationSettings />
             )}
             <button
@@ -833,10 +763,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             onSearchQueryChange={setSearchQuery}
             expiryFilter={expiryFilter}
             onExpiryFilterChange={setExpiryFilter}
-            onNotifyExpiring={user.username === 'staffwebdev' ? handleNotifyExpiring : undefined}
+            onNotifyExpiring={isStaffUser(user) ? handleNotifyExpiring : undefined}
             isNotifying={isNotifying}
             notifyResult={notifyResult}
-            isStaffwebdev={user.username === 'staffwebdev'}
+            isStaffwebdev={isStaffUser(user)}
           />
 
           {isRefreshing && checkProgress.total > 0 && (
@@ -876,10 +806,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                       <DomainCard
                         key={domain.url}
                         domain={domain}
-                        completedCount={progressMap[domain.name]?.length ?? 0}
+                        completedCount={progressMap[domain.url]?.length ?? 0}
                         totalSteps={WORDPRESS_SETUP_STEPS.length}
                         onClick={handleDomainClick}
-                        isStaffwebdev={user.username === 'staffwebdev'}
+                        isStaffwebdev={isStaffUser(user)}
                         isArchived={domain.isArchived ?? false}
                         onArchive={handleArchiveDomain}
                         onDelete={handleDeleteDomain}
@@ -900,12 +830,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onProgressChange={handleProgressChange}
-        initialTasks={selectedDomain ? (progressMap[selectedDomain.name] ?? []) : []}
+        initialTasks={selectedDomain ? (progressMap[selectedDomain.url] ?? []) : []}
         onDomainMetaUpdate={(domainUrl, meta) => {
           // Immediately update selectedDomain first (so dialog updates right away)
           setSelectedDomain((prev) => {
             if (!prev || prev.url !== domainUrl) return prev
-            return { ...prev, registrationDate: meta.registrationDate, expiryDate: meta.expiryDate, whatsappNotify: meta.whatsappNotify }
+            return { ...prev, registrationDate: meta.registrationDate, expiryDate: meta.expiryDate, emailNotify: meta.emailNotify }
           })
           // Then update categories
           setCategories((prev) =>
@@ -913,7 +843,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               ...cat,
               domains: cat.domains.map((d) =>
                 d.url === domainUrl
-                  ? { ...d, registrationDate: meta.registrationDate, expiryDate: meta.expiryDate, whatsappNotify: meta.whatsappNotify }
+                  ? { ...d, registrationDate: meta.registrationDate, expiryDate: meta.expiryDate, emailNotify: meta.emailNotify }
                   : d
               ),
             }))
@@ -921,19 +851,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           // Then fetch from server to ensure sync
           fetchDomainMeta()
         }}
-        canEditDates={user.username === 'staffwebdev'}
+        canEditDates={isStaffUser(user)}
       />
 
       <AddCategoryDialog
         open={addCategoryOpen}
         onOpenChange={setAddCategoryOpen}
-        onAdded={() => fetchCustomData()}
+        onAdded={() => fetchDomains()}
       />
       <AddDomainDialog
         open={addDomainOpen}
         onOpenChange={setAddDomainOpen}
         onAdded={() => {
-          fetchCustomData().then(() => fetchDomainMeta()).then(() => checkAllStatuses(false))
+          fetchDomains().then(() => fetchDomainMeta()).then(() => checkAllStatuses(false))
         }}
         existingCategories={categories.map((c) => c.name)}
       />
@@ -942,7 +872,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         onOpenChange={setEditDomainOpen}
         domain={editDomain}
         onEdited={() => {
-          fetchCustomData().then(() => fetchDomainMeta())
+          fetchDomains().then(() => fetchDomainMeta())
         }}
         existingCategories={categories.map((c) => c.name)}
       />

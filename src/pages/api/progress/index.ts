@@ -23,9 +23,10 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     const rows = await sql`
-      SELECT domain_name, completed_tasks
+      SELECT domain_url, completed_tasks
       FROM domain_progress
-      ORDER BY domain_name
+      WHERE user_id = ${user.id}
+      ORDER BY domain_url
     `
 
     return new Response(JSON.stringify({ data: rows }), {
@@ -60,9 +61,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const body = await request.json()
-    const { domain_name, completed_tasks } = body
+    const { domain_url, completed_tasks } = body
 
-    if (!domain_name || !Array.isArray(completed_tasks)) {
+    if (!domain_url || !Array.isArray(completed_tasks)) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -70,9 +71,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     await sql`
-      INSERT INTO domain_progress (domain_name, completed_tasks, updated_at)
-      VALUES (${domain_name}, ${JSON.stringify(completed_tasks)}::jsonb, NOW())
-      ON CONFLICT (domain_name)
+      INSERT INTO domain_progress (user_id, domain_url, completed_tasks, updated_at)
+      VALUES (${user.id}, ${domain_url}, ${JSON.stringify(completed_tasks)}::jsonb, NOW())
+      ON CONFLICT (user_id, domain_url)
       DO UPDATE SET
         completed_tasks = ${JSON.stringify(completed_tasks)}::jsonb,
         updated_at = NOW()

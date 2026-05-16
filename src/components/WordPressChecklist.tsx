@@ -7,12 +7,12 @@ import { Loader2, CheckCircle2, Circle } from 'lucide-react'
 import { WORDPRESS_SETUP_STEPS } from '@/data/domains'
 
 interface WordPressChecklistProps {
-  domainName: string
+  domainUrl: string
   initialTasks?: number[]
-  onProgressChange?: (domainName: string, completedTasks: number[]) => void
+  onProgressChange?: (domainUrl: string, completedTasks: number[]) => void
 }
 
-export function WordPressChecklist({ domainName, initialTasks, onProgressChange }: WordPressChecklistProps) {
+export function WordPressChecklist({ domainUrl, initialTasks, onProgressChange }: WordPressChecklistProps) {
   const [completedTasks, setCompletedTasks] = useState<number[]>(initialTasks ?? [])
   const [saving, setSaving] = useState<number | null>(null)
 
@@ -48,12 +48,12 @@ export function WordPressChecklist({ domainName, initialTasks, onProgressChange 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            domain_name: domainName,
+            domain_url: domainUrl,
             completed_tasks: newCompleted,
           }),
         })
         if (res.ok) {
-          onProgressChange?.(domainName, newCompleted)
+          onProgressChange?.(domainUrl, newCompleted)
         }
       } catch {
         setCompletedTasks(completedTasks)
@@ -61,7 +61,7 @@ export function WordPressChecklist({ domainName, initialTasks, onProgressChange 
         setSaving(null)
       }
     },
-    [completedTasks, domainName, onProgressChange]
+    [completedTasks, domainUrl, onProgressChange]
   )
 
   return (

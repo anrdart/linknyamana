@@ -22,7 +22,7 @@ export default defineConfig({
     resolve: {
       dedupe: ['react', 'react-dom'],
       alias: {
-        '@': __dirname + './src',
+        '@': __dirname + 'src',
       },
     },
   },

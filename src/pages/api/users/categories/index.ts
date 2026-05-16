@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, isStaff } from '@/lib/auth'
 
 export const GET: APIRoute = async ({ cookies, url }) => {
   const token = cookies.get('session')?.value
@@ -22,14 +22,14 @@ export const GET: APIRoute = async ({ cookies, url }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    const username = url.searchParams.get('username')
+
+    if (!isStaff(user) && (!username || username !== user.username)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
       })
     }
-
-    const username = url.searchParams.get('username')
 
     let data
     if (username) {
@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -143,7 +143,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

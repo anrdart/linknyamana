@@ -1,13 +1,6 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import LoginPage from '@/components/LoginPage'
-import Dashboard from '@/components/Dashboard'
-
-export interface UserInfo {
-  id: string
-  username: string
-  display_name: string
-  role: string
-}
+import Dashboard, { type UserInfo } from '@/components/Dashboard'
 
 export default function AppShell() {
   const [user, setUser] = useState<UserInfo | null>(null)

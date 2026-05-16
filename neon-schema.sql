@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS domain_meta (
   domain_url TEXT PRIMARY KEY,
   registration_date DATE NULL,
   expiry_date DATE NULL,
-  whatsapp_notify BOOLEAN DEFAULT true,
+  email_notify BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

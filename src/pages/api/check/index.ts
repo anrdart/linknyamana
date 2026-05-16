@@ -1,10 +1,28 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
+import { validateSession } from '@/lib/auth'
 import { checkDomain } from '@/lib/status-check'
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const token = cookies.get('session')?.value
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
   try {
+    const sql = getDb(env.DATABASE_URL)
+    const user = await validateSession(sql, token)
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const body = await request.json()
     const { url, force = false } = body as { url: string; force?: boolean }
 
@@ -15,12 +33,13 @@ export const POST: APIRoute = async ({ request }) => {
       })
     }
 
+    const normalizedUrl = url.replace(/^http:/, 'https:').replace(/\/+$/, '')
+
     if (!force) {
       try {
-        const sql = getDb(env.DATABASE_URL)
         const cached = await sql`
           SELECT status FROM domain_status
-          WHERE domain_url = ${url} AND checked_at > NOW() - INTERVAL '600 seconds'
+          WHERE domain_url = ${normalizedUrl} AND checked_at > NOW() - INTERVAL '600 seconds'
         `
         if (cached && cached.length > 0) {
           return new Response(JSON.stringify({ url, status: (cached[0] as { status: string }).status }), {
@@ -33,13 +52,12 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    const status = await checkDomain(url)
+    const status = await checkDomain(normalizedUrl)
 
     try {
-      const sql = getDb(env.DATABASE_URL)
       await sql`
         INSERT INTO domain_status (domain_url, status, checked_at)
-        VALUES (${url}, ${status}, NOW())
+        VALUES (${normalizedUrl}, ${status}, NOW())
         ON CONFLICT (domain_url)
         DO UPDATE SET status = ${status}, checked_at = NOW()
       `

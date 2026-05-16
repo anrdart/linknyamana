@@ -22,7 +22,7 @@ interface DomainDetailDialogProps {
   initialTasks?: number[]
   onDomainMetaUpdate?: (
     domainUrl: string,
-    meta: { registrationDate: string; expiryDate: string; whatsappNotify: boolean }
+    meta: { registrationDate: string; expiryDate: string; emailNotify: boolean }
   ) => void
   canEditDates?: boolean
 }
@@ -40,7 +40,7 @@ export function DomainDetailDialog({
 }: DomainDetailDialogProps) {
   const [registrationDate, setRegistrationDate] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
-  const [whatsappNotify, setWhatsappNotify] = useState(true)
+  const [emailNotify, setWhatsappNotify] = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
 
@@ -60,7 +60,7 @@ export function DomainDetailDialog({
     if (domain) {
       setRegistrationDate(formatDateForInput(domain.registrationDate))
       setExpiryDate(formatDateForInput(domain.expiryDate))
-      setWhatsappNotify(domain.whatsappNotify ?? true)
+      setWhatsappNotify(domain.emailNotify ?? true)
       setSaveError('')
       // Don't override saveStatus if it's currently showing success/error (let it expire via setTimeout)
       setSaveStatus((prev) => (prev === 'success' || prev === 'error' ? prev : 'idle'))
@@ -88,7 +88,7 @@ export function DomainDetailDialog({
           domain_url: domain.url,
           registration_date: registrationDate || null,
           expiry_date: expiryDate || null,
-          whatsapp_notify: whatsappNotify,
+          email_notify: emailNotify,
         }),
       })
 
@@ -101,7 +101,7 @@ export function DomainDetailDialog({
       onDomainMetaUpdate?.(domain.url, {
         registrationDate,
         expiryDate,
-        whatsappNotify,
+        emailNotify,
       })
 
       setTimeout(() => setSaveStatus('idle'), 3000)
@@ -189,7 +189,7 @@ export function DomainDetailDialog({
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="whatsapp-notify"
-                  checked={whatsappNotify}
+                  checked={emailNotify}
                   onCheckedChange={(checked) => setWhatsappNotify(checked === true)}
                 />
                 <label htmlFor="whatsapp-notify" className="text-sm">
@@ -241,7 +241,7 @@ export function DomainDetailDialog({
         </div>
 
         <WordPressChecklist
-          domainName={domain.name}
+          domainUrl={domain.url}
           initialTasks={initialTasks}
           onProgressChange={onProgressChange}
         />

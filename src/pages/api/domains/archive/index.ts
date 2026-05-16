@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, isStaff } from '@/lib/auth'
+import { normalizeUrl } from '@/lib/utils'
 
 export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
@@ -60,7 +61,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -77,21 +78,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
+    const normalized = normalizeUrl(domain_url)
+
     if (archived === true) {
       await sql`
         INSERT INTO archived_domains (domain_url)
-        VALUES (${domain_url})
+        VALUES (${normalized})
         ON CONFLICT (domain_url) DO NOTHING
       `
       await sql`
-        UPDATE custom_domains SET archived = true WHERE url = ${domain_url}
+        UPDATE custom_domains SET archived = true WHERE url = ${normalized}
       `
     } else {
       await sql`
-        DELETE FROM archived_domains WHERE domain_url = ${domain_url}
+        DELETE FROM archived_domains WHERE domain_url = ${normalized}
       `
       await sql`
-        UPDATE custom_domains SET archived = false WHERE url = ${domain_url}
+        UPDATE custom_domains SET archived = false WHERE url = ${normalized}
       `
     }
 

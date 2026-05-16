@@ -66,3 +66,12 @@ export async function validateSession(sql: NeonQueryFunction<false, false>, toke
 export async function destroySession(sql: NeonQueryFunction<false, false>, token: string): Promise<void> {
   await sql`DELETE FROM sessions WHERE token = ${token}`
 }
+
+export async function cleanExpiredSessions(sql: NeonQueryFunction<false, false>): Promise<number> {
+  const result = await sql`DELETE FROM sessions WHERE expires_at <= NOW()`
+  return result.length ?? 0
+}
+
+export function isStaff(user: User): boolean {
+  return user.role === 'admin' || user.username === 'staffwebdev'
+}

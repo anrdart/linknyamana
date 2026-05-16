@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, isStaff } from '@/lib/auth'
 
 export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
@@ -22,11 +22,21 @@ export const GET: APIRoute = async ({ cookies }) => {
       })
     }
 
-    const data = await sql`
-      SELECT id, name, url, category_name, owner, archived, created_at
-      FROM custom_domains
-      ORDER BY archived ASC, created_at DESC
-    `
+    let data
+    if (isStaff(user)) {
+      data = await sql`
+        SELECT id, name, url, category_name, owner, archived, created_at
+        FROM custom_domains
+        ORDER BY archived ASC, created_at DESC
+      `
+    } else {
+      data = await sql`
+        SELECT d.id, d.name, d.url, d.category_name, d.owner, d.archived, d.created_at
+        FROM custom_domains d
+        INNER JOIN user_categories uc ON uc.category_name = d.category_name AND uc.username = ${user.username}
+        ORDER BY d.archived ASC, d.created_at DESC
+      `
+    }
 
     return new Response(JSON.stringify({ data }), {
       status: 200,
@@ -60,7 +70,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -128,7 +138,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -208,7 +218,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    if (user.username !== 'staffwebdev') {
+    if (!isStaff(user)) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

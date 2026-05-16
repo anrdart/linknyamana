@@ -1,7 +1,7 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
 export interface DomainProgress {
-  domain_name: string
+  domain_url: string
   completed_tasks: number[]
   updated_at: string
 }

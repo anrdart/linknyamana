@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     cookies.set('session', token, {
       path: '/',
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
     })
@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('Login error:', msg)
-    return new Response(JSON.stringify({ error: `DB Error: ${msg}` }), {
+    return new Response(JSON.stringify({ error: 'Terjadi kesalahan server' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })

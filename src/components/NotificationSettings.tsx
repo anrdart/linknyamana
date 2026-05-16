@@ -60,10 +60,7 @@ export function NotificationSettings() {
 
       if (!res.ok) throw new Error('Failed to add')
 
-      const result = await res.json()
-      if (result.id) {
-        setEmails((prev) => prev.map((e) => (e.id === optimisticId ? { id: result.id, email } : e)))
-      }
+      await fetchEmails()
     } catch {
       setEmails((prev) => prev.filter((e) => e.id !== optimisticId))
       setNewEmail(email)
@@ -162,7 +159,7 @@ export function NotificationSettings() {
 
       {errorMessage && (
         <div className="flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 h-3" />
+          <AlertCircle className="h-3 w-3" />
           <span>{errorMessage}</span>
         </div>
       )}
