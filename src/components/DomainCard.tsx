@@ -189,20 +189,18 @@ export function DomainCard({
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
               )}
-              {isArchived && (
-                <button
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (window.confirm('Hapus domain ini?')) {
-                      onDelete?.(domain);
-                    }
-                  }}
-                  title="Hapus"
-                  className="text-destructive/50 hover:text-destructive transition-colors p-1"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm('Hapus domain ini?')) {
+                    onDelete?.(domain);
+                  }
+                }}
+                title="Hapus"
+                className="text-destructive/50 hover:text-destructive transition-colors p-1"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
         </div>
