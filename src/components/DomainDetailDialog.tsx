@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { WordPressChecklist } from '@/components/WordPressChecklist'
 import { type Domain, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Globe, ExternalLink, Calendar, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Globe, ExternalLink, Calendar, Loader2, Check, AlertCircle, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DomainDetailDialogProps {
@@ -43,6 +43,8 @@ export function DomainDetailDialog({
   const [emailNotify, setWhatsappNotify] = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
+  const [whoisLoading, setWhoisLoading] = useState(false)
+  const [whoisError, setWhoisError] = useState('')
 
   // Helper to convert date string or Date object to YYYY-MM-DD format for input[type="date"]
   const formatDateForInput = (dateValue: string | Date | undefined): string => {
@@ -186,6 +188,45 @@ export function DomainDetailDialog({
 
           {canEditDates && (
             <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    setWhoisLoading(true)
+                    setWhoisError('')
+                    try {
+                      const res = await fetch('/api/domains/whois', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ domain_url: domain.url }),
+                      })
+                      const result = await res.json()
+                      if (!res.ok) {
+                        setWhoisError(result.error || 'WHOIS lookup failed')
+                      } else if (result.data) {
+                        if (result.data.registrationDate) setRegistrationDate(result.data.registrationDate)
+                        if (result.data.expiryDate) setExpiryDate(result.data.expiryDate)
+                      }
+                    } catch {
+                      setWhoisError('Network error')
+                    }
+                    setWhoisLoading(false)
+                  }}
+                  disabled={whoisLoading}
+                >
+                  {whoisLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                  ) : (
+                    <Search className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  Auto-fill WHOIS
+                </Button>
+                {whoisError && (
+                  <span className="text-xs text-destructive">{whoisError}</span>
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="whatsapp-notify"

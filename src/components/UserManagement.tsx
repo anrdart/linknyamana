@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Users, Shield, Plus, Trash2, Pencil, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -46,6 +45,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
 
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null)
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null)
 
   const [selectedUsername, setSelectedUsername] = useState('')
   const [userCategories, setUserCategories] = useState<string[]>([])
@@ -199,6 +199,24 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
     }
   }
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setUpdatingRoleUserId(userId)
+    setErrorMessage('')
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, role: newRole }),
+      })
+      if (!res.ok) throw new Error('Failed to update role')
+      fetchUsers()
+    } catch {
+      setErrorMessage('Gagal mengubah role')
+    } finally {
+      setUpdatingRoleUserId(null)
+    }
+  }
+
   const handleCategoryToggle = async (categoryName: string, checked: boolean) => {
     setCategoryUpdates((prev) => ({ ...prev, [categoryName]: true }))
 
@@ -298,9 +316,16 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">{user.username}</span>
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
-                        {user.role}
-                      </Badge>
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        disabled={updatingRoleUserId === user.id}
+                        className="rounded border border-input bg-background px-1.5 py-0 text-[10px] ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="admin">admin</option>
+                        <option value="editor">editor</option>
+                        <option value="viewer">viewer</option>
+                      </select>
                     </div>
                     {editingUserId === user.id ? (
                       <div className="flex items-center gap-2 mt-1">

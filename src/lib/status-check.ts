@@ -25,8 +25,14 @@ export function analyzeContent(text: string): 'online' | 'offline' {
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
-export async function checkDomain(url: string): Promise<'online' | 'offline'> {
+export interface CheckResult {
+  status: 'online' | 'offline'
+  responseTimeMs: number
+}
+
+export async function checkDomain(url: string): Promise<CheckResult> {
   const normalizedUrl = url.replace(/^http:/, 'https:')
+  const start = Date.now()
 
   try {
     const res = await fetch(normalizedUrl, {
@@ -36,12 +42,14 @@ export async function checkDomain(url: string): Promise<'online' | 'offline'> {
       headers: { 'User-Agent': UA },
     })
 
-    if (res.status >= 500) return 'offline'
+    const responseTimeMs = Date.now() - start
+
+    if (res.status >= 500) return { status: 'offline', responseTimeMs }
 
     const text = await getTextSnippet(res, 3000)
-    return analyzeContent(text)
+    return { status: analyzeContent(text), responseTimeMs }
   } catch {
-    return 'offline'
+    return { status: 'offline', responseTimeMs: Date.now() - start }
   }
 }
 

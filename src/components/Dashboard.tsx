@@ -7,11 +7,17 @@ import { AddDomainDialog } from '@/components/AddDomainDialog'
 import { EditDomainDialog } from '@/components/EditDomainDialog'
 import { NotificationSettings } from '@/components/NotificationSettings'
 import { UserManagement } from '@/components/UserManagement'
+import { PasswordChangeDialog } from '@/components/PasswordChangeDialog'
+import { BulkImportDialog } from '@/components/BulkImportDialog'
+import { ProgressReportDialog } from '@/components/ProgressReportDialog'
+import { AnalyticsPanel } from '@/components/AnalyticsPanel'
 import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search } from 'lucide-react'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { toggleTheme, getTheme } from '@/lib/theme'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export interface UserInfo {
   id: string
@@ -21,7 +27,15 @@ export interface UserInfo {
 }
 
 function isStaffUser(user: UserInfo): boolean {
-  return user.role === 'admin' || isStaffUser(user)
+  return user.role === 'admin' || user.username === 'staffwebdev'
+}
+
+function isAdminUser(user: UserInfo): boolean {
+  return user.role === 'admin'
+}
+
+function canEditUser(user: UserInfo): boolean {
+  return user.role === 'admin' || user.role === 'editor'
 }
 
 interface DashboardProps {
@@ -58,12 +72,36 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [categoriesExpanded, setCategoriesExpanded] = useState(true)
   const [viewMode, setViewMode] = useState<'active' | 'archive'>('active')
   const [sidebarFilter, setSidebarFilter] = useState('')
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null)
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null)
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const [progressReportOpen, setProgressReportOpen] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => typeof window !== 'undefined' ? getTheme() === 'dark' : false)
+  const [sortBy, setSortBy] = useState<'default' | 'status' | 'expiry' | 'name'>('default')
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const categoriesRef = useRef(categories)
   categoriesRef.current = categories
   const isRefreshingRef = useRef(isRefreshing)
   isRefreshingRef.current = isRefreshing
+
+  useKeyboardShortcuts({
+    onSearch: () => searchInputRef.current?.focus(),
+    onEscape: () => {
+      setDialogOpen(false)
+      setSearchQuery('')
+      setSidebarOpen(false)
+    },
+    onRefresh: () => checkAllStatuses(true),
+  })
+
+  const handleToggleDarkMode = () => {
+    const next = toggleTheme()
+    setDarkMode(next === 'dark')
+  }
 
   const fetchAllProgress = useCallback(async () => {
     try {
@@ -207,6 +245,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const result: DomainCategory[] = [...allCatNames].map((catName) => {
         const catFromDb = dbCategories.find((c: { name: string }) => c.name === catName)
         return {
+          id: catFromDb?.id,
           name: catName,
           icon: catFromDb?.icon || '📁',
           domains: domainList
@@ -282,12 +321,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             })
             const data = await res.json()
             const status = (data.status ?? 'offline') as 'online' | 'offline'
+            const responseTimeMs = data.response_time_ms as number | undefined
 
             setCategories((prev) =>
               prev.map((cat) => ({
                 ...cat,
                 domains: cat.domains.map((d) =>
-                  d.url === domain.url ? { ...d, status, lastChecked: new Date() } : d
+                  d.url === domain.url ? { ...d, status, responseTimeMs, lastChecked: new Date() } : d
                 ),
               }))
             )
@@ -300,7 +340,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 prev.map((cat) => ({
                   ...cat,
                   domains: cat.domains.map((d) =>
-                    d.url === domain.url ? { ...d, status: 'offline' as const, lastChecked: new Date() } : d
+                    d.url === domain.url ? { ...d, status: 'offline' as const, responseTimeMs: undefined, lastChecked: new Date() } : d
                   ),
                 }))
               )
@@ -354,12 +394,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       })
       const data = await res.json()
       const status = (data.status ?? 'offline') as 'online' | 'offline'
+      const responseTimeMs = data.response_time_ms as number | undefined
 
       setCategories((prev) =>
         prev.map((cat) => ({
           ...cat,
           domains: cat.domains.map((d) =>
-            d.url === domain.url ? { ...d, status, lastChecked: new Date(), lastDeepChecked: new Date() } : d
+            d.url === domain.url ? { ...d, status, responseTimeMs, lastChecked: new Date(), lastDeepChecked: new Date() } : d
           ),
         }))
       )
@@ -368,7 +409,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         prev.map((cat) => ({
           ...cat,
           domains: cat.domains.map((d) =>
-            d.url === domain.url ? { ...d, status: 'offline' as const, lastChecked: new Date(), lastDeepChecked: new Date() } : d
+            d.url === domain.url ? { ...d, status: 'offline' as const, responseTimeMs: undefined, lastChecked: new Date(), lastDeepChecked: new Date() } : d
           ),
         }))
       )
@@ -503,6 +544,28 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [fetchDomains])
 
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
+    setDeletingCategoryId(categoryId)
+    try {
+      const res = await fetch('/api/categories/custom', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: categoryId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Gagal menghapus kategori')
+        return
+      }
+      setConfirmDeleteCategory(null)
+      fetchDomains()
+    } catch {
+      alert('Gagal menghapus kategori')
+    } finally {
+      setDeletingCategoryId(null)
+    }
+  }, [fetchDomains])
+
   const handleEditDomain = useCallback((domain: Domain) => {
     setEditDomain(domain)
     setEditDomainOpen(true)
@@ -547,6 +610,18 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       }
 
       return true
+    }).sort((a, b) => {
+      if (sortBy === 'status') {
+        const order = { offline: 0, checking: 1, online: 2 }
+        return (order[a.status] ?? 1) - (order[b.status] ?? 1)
+      }
+      if (sortBy === 'expiry') {
+        const aExp = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
+        const bExp = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
+        return aExp - bExp
+      }
+      if (sortBy === 'name') return a.name.localeCompare(b.name)
+      return 0
     })
   }
 
@@ -629,24 +704,55 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 {categories
                   .filter((cat) => cat.name.toLowerCase().includes(sidebarFilter.toLowerCase()))
                   .map((cat) => (
-                    <button
-                      key={cat.name}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors',
-                        activeCategory === cat.name
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    <div key={cat.name} className="flex items-center gap-0.5">
+                      <button
+                        className={cn(
+                          'flex flex-1 items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors min-w-0',
+                          activeCategory === cat.name
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                        onClick={() => {
+                          setActiveCategory(cat.name)
+                          setViewMode('active')
+                          setSidebarOpen(false)
+                        }}
+                      >
+                        <span>{cat.icon}</span>
+                        <span className="truncate flex-1 text-left">{cat.name}</span>
+                        <span className="text-[10px] opacity-60">{cat.domains.filter(d => d.isArchived !== true).length}</span>
+                      </button>
+                      {isStaffUser(user) && cat.id && (
+                        confirmDeleteCategory === cat.id ? (
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              className="rounded p-0.5 text-[10px] text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteCategory(cat.id!)}
+                              disabled={deletingCategoryId === cat.id}
+                            >
+                              {deletingCategoryId === cat.id ? '...' : 'Ya'}
+                            </button>
+                            <button
+                              className="rounded p-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                              onClick={() => setConfirmDeleteCategory(null)}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setConfirmDeleteCategory(cat.id!)
+                            }}
+                            title="Hapus kategori"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )
                       )}
-                      onClick={() => {
-                        setActiveCategory(cat.name)
-                        setViewMode('active')
-                        setSidebarOpen(false)
-                      }}
-                    >
-                      <span>{cat.icon}</span>
-                      <span className="truncate flex-1 text-left">{cat.name}</span>
-                      <span className="text-[10px] opacity-60">{cat.domains.filter(d => d.isArchived !== true).length}</span>
-                    </button>
+                    </div>
                   ))}
               </div>
             </div>
@@ -669,29 +775,51 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </button>
           </nav>
 
-          {isStaffUser(user) && (
+          {(canEditUser(user) || isAdminUser(user)) && (
             <div className="border-t p-3 space-y-1">
+              {canEditUser(user) && (
+                <>
+                  <button
+                    onClick={() => { setAddCategoryOpen(true); setSidebarOpen(false) }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Kategori
+                  </button>
+                  <button
+                    onClick={() => { setAddDomainOpen(true); setSidebarOpen(false) }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Domain
+                  </button>
+                </>
+              )}
+              {canEditUser(user) && (
+                <button
+                  onClick={() => { setBulkImportOpen(true); setSidebarOpen(false) }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import / Export
+                </button>
+              )}
               <button
-                onClick={() => { setAddCategoryOpen(true); setSidebarOpen(false) }}
+                onClick={() => { setProgressReportOpen(true); setSidebarOpen(false) }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               >
-                <Plus className="h-4 w-4" />
-                Tambah Kategori
+                <BarChart3 className="h-4 w-4" />
+                Progress Report
               </button>
-              <button
-                onClick={() => { setAddDomainOpen(true); setSidebarOpen(false) }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Tambah Domain
-              </button>
-              <button
-                onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              >
-                <Shield className="h-4 w-4" />
-                Management User
-              </button>
+              {isAdminUser(user) && (
+                <button
+                  onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <Shield className="h-4 w-4" />
+                  Management User
+                </button>
+              )}
             </div>
           )}
 
@@ -700,15 +828,29 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               <NotificationSettings />
             )}
             <button
+              onClick={() => { setPasswordDialogOpen(true); setSidebarOpen(false) }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              <KeyRound className="h-4 w-4" />
+              Ganti Password
+            </button>
+            <button
               onClick={onLogout}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Keluar
             </button>
+            <button
+              onClick={handleToggleDarkMode}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {darkMode ? 'Light Mode' : 'Dark Mode'}
+            </button>
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-[10px] text-muted-foreground">
-                Auto-refresh every 15 minutes
+                Auto-refresh every 15 minutes &middot; <kbd className="text-[9px] bg-background px-1 rounded">/</kbd> search &middot; <kbd className="text-[9px] bg-background px-1 rounded">r</kbd> refresh
               </p>
             </div>
           </div>
@@ -769,6 +911,30 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             isStaffwebdev={isStaffUser(user)}
           />
 
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className="text-xs"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              {showAnalytics ? 'Sembunyikan' : 'Tampilkan'} Analytics
+            </Button>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+            >
+              <option value="default">Urutan Default</option>
+              <option value="status">Urut Status (offline dulu)</option>
+              <option value="expiry">Urut Expiry (terdekat dulu)</option>
+              <option value="name">Urut Nama (A-Z)</option>
+            </select>
+          </div>
+
+          {showAnalytics && <AnalyticsPanel />}
+
           {isRefreshing && checkProgress.total > 0 && (
             <div className="rounded-lg border bg-card p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -809,7 +975,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                         completedCount={progressMap[domain.url]?.length ?? 0}
                         totalSteps={WORDPRESS_SETUP_STEPS.length}
                         onClick={handleDomainClick}
-                        isStaffwebdev={isStaffUser(user)}
+                        isStaffwebdev={canEditUser(user)}
                         isArchived={domain.isArchived ?? false}
                         onArchive={handleArchiveDomain}
                         onDelete={handleDeleteDomain}
@@ -851,7 +1017,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           // Then fetch from server to ensure sync
           fetchDomainMeta()
         }}
-        canEditDates={isStaffUser(user)}
+        canEditDates={canEditUser(user)}
       />
 
       <AddCategoryDialog
@@ -880,6 +1046,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         open={userMgmtOpen}
         onOpenChange={setUserMgmtOpen}
         allCategories={categories.map((c) => c.name)}
+      />
+      <PasswordChangeDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+      />
+      <BulkImportDialog
+        open={bulkImportOpen}
+        onOpenChange={setBulkImportOpen}
+        onImported={() => fetchDomains()}
+      />
+      <ProgressReportDialog
+        open={progressReportOpen}
+        onOpenChange={setProgressReportOpen}
       />
     </div>
   )

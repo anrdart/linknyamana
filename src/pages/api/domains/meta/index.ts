@@ -24,7 +24,9 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     const rows = await sql`
-      SELECT domain_url, registration_date, expiry_date, email_notify, created_at, updated_at
+      SELECT domain_url, registration_date, expiry_date, email_notify,
+             ssl_issuer, ssl_expiry_date, ssl_checked_at,
+             created_at, updated_at
       FROM domain_meta
       ORDER BY domain_url
     `
@@ -61,7 +63,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const body = await request.json()
-    const { domain_url, registration_date, expiry_date, email_notify } = body
+    const { domain_url, registration_date, expiry_date, email_notify, ssl_issuer, ssl_expiry_date, ssl_checked_at } = body
 
     if (!domain_url) {
       return new Response(JSON.stringify({ error: 'domain_url required' }), {
@@ -73,13 +75,26 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const normalized = normalizeUrl(domain_url)
 
     await sql`
-      INSERT INTO domain_meta (domain_url, registration_date, expiry_date, email_notify, created_at, updated_at)
-      VALUES (${normalized}, ${registration_date ?? null}, ${expiry_date ?? null}, ${typeof email_notify === 'boolean' ? email_notify : true}, NOW(), NOW())
+      INSERT INTO domain_meta (domain_url, registration_date, expiry_date, email_notify, ssl_issuer, ssl_expiry_date, ssl_checked_at, created_at, updated_at)
+      VALUES (
+        ${normalized},
+        ${registration_date ?? null},
+        ${expiry_date ?? null},
+        ${typeof email_notify === 'boolean' ? email_notify : true},
+        ${ssl_issuer ?? null},
+        ${ssl_expiry_date ?? null},
+        ${ssl_checked_at ?? null},
+        NOW(),
+        NOW()
+      )
       ON CONFLICT (domain_url)
       DO UPDATE SET
         registration_date = EXCLUDED.registration_date,
         expiry_date = EXCLUDED.expiry_date,
         email_notify = EXCLUDED.email_notify,
+        ssl_issuer = COALESCE(EXCLUDED.ssl_issuer, domain_meta.ssl_issuer),
+        ssl_expiry_date = COALESCE(EXCLUDED.ssl_expiry_date, domain_meta.ssl_expiry_date),
+        ssl_checked_at = COALESCE(EXCLUDED.ssl_checked_at, domain_meta.ssl_checked_at),
         updated_at = NOW()
     `
 

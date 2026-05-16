@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 import { validateSession, isStaff } from '@/lib/auth'
+import { logActivity } from '@/lib/activity-log'
 
 export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
@@ -96,6 +97,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         RETURNING id
       `
       const id = result?.[0]?.id
+      await logActivity(sql, { userId: user.id, username: user.username, action: 'domain.create', target: name.trim(), details: { url: normalizedUrl, category: category_name.trim() } })
       return new Response(JSON.stringify({ success: true, id }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -235,7 +237,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const result = await sql`DELETE FROM custom_domains WHERE id = ${id} RETURNING id`
+    const result = await sql`DELETE FROM custom_domains WHERE id = ${id} RETURNING id, name`
 
     if (!result || result.length === 0) {
       return new Response(JSON.stringify({ error: 'Domain not found' }), {
@@ -243,6 +245,8 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
         headers: { 'Content-Type': 'application/json' },
       })
     }
+
+    await logActivity(sql, { userId: user.id, username: user.username, action: 'domain.delete', target: (result[0] as any).name ?? id })
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

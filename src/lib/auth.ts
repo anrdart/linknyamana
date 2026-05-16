@@ -75,3 +75,13 @@ export async function cleanExpiredSessions(sql: NeonQueryFunction<false, false>)
 export function isStaff(user: User): boolean {
   return user.role === 'admin' || user.username === 'staffwebdev'
 }
+
+export type Role = 'admin' | 'editor' | 'viewer'
+
+export function canEdit(user: User): boolean {
+  return user.role === 'admin' || user.role === 'editor'
+}
+
+export function canView(user: User): boolean {
+  return true // all authenticated users can view
+}

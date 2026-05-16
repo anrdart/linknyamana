@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Loader2, Archive, Trash2, Pencil } from 'lucide-react'
+import { CheckCircle2, Loader2, Archive, Trash2, Pencil, Lock, AlertTriangle } from 'lucide-react'
 import { type Domain } from '@/data/domains'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ interface DomainCardProps {
   onArchive?: (domain: Domain) => void
   onDelete?: (domain: Domain) => void
   onEdit?: (domain: Domain) => void
+  sslExpiryDate?: string
 }
 
 function formatTimeAgo(date: Date): string {
@@ -52,20 +53,39 @@ function getExpiryInfo(expiryDate: string | undefined): { days: number; label: s
   return { days, label: `${days}d left`, variant: 'success' }
 }
 
-export function DomainCard({ 
-  domain, 
-  completedCount, 
-  totalSteps, 
-  onClick, 
-  isStaffwebdev, 
-  isArchived, 
-  onArchive, 
+function getSslInfo(sslExpiryDate: string | undefined): { daysLeft: number; warning: boolean; expired: boolean } | null {
+  if (!sslExpiryDate) return null
+  const expiry = new Date(sslExpiryDate)
+  if (isNaN(expiry.getTime())) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  expiry.setHours(0, 0, 0, 0)
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  return { daysLeft, warning: daysLeft <= 30 && daysLeft > 0, expired: daysLeft <= 0 }
+}
+
+function getResponseTimeColor(ms: number): string {
+  if (ms < 500) return 'text-emerald-600 dark:text-emerald-400'
+  if (ms <= 2000) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
+}
+
+export function DomainCard({
+  domain,
+  completedCount,
+  totalSteps,
+  onClick,
+  isStaffwebdev,
+  isArchived,
+  onArchive,
   onDelete,
-  onEdit
+  onEdit,
+  sslExpiryDate
 }: DomainCardProps) {
   const progress = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0
   const isChecking = domain.status === 'checking'
   const expiryInfo = getExpiryInfo(domain.expiryDate)
+  const sslInfo = getSslInfo(sslExpiryDate)
 
   const statusConfig = {
     online: { variant: 'success' as const, label: 'Online', dotClass: 'bg-emerald-500' },
@@ -112,6 +132,26 @@ export function DomainCard({
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0 flex-wrap">
+            {sslInfo && !isArchived && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-0.5 text-[10px]',
+                  sslInfo.expired ? 'text-red-600 dark:text-red-400' : sslInfo.warning ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                )}
+                title={sslInfo.expired ? 'SSL expired' : `SSL expires in ${sslInfo.daysLeft}d`}
+              >
+                {sslInfo.expired || sslInfo.warning ? (
+                  <AlertTriangle className="h-3 w-3" />
+                ) : (
+                  <Lock className="h-3 w-3" />
+                )}
+              </span>
+            )}
+            {domain.responseTimeMs !== undefined && !isArchived && !isChecking && (
+              <span className={cn('text-[10px] font-mono', getResponseTimeColor(domain.responseTimeMs))}>
+                {domain.responseTimeMs}ms
+              </span>
+            )}
             {expiryInfo && !isArchived && (
               <Badge
                 variant={expiryInfo.variant}

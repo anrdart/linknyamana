@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 import { verifyLogin, createSession } from '@/lib/auth'
+import { logActivity } from '@/lib/activity-log'
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const sql = getDb(env.DATABASE_URL)
@@ -27,6 +28,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const token = await createSession(sql, user.id)
+
+    await logActivity(sql, { userId: user.id, username: user.username, action: 'user.login', target: user.username })
 
     cookies.set('session', token, {
       path: '/',

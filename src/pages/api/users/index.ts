@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
 import { validateSession, isStaff } from '@/lib/auth'
+import { logActivity } from '@/lib/activity-log'
 
 export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('session')?.value
@@ -92,6 +93,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         INSERT INTO users (username, display_name, password_hash, role)
         VALUES (${username.trim()}, ${display_name?.trim() || username.trim()}, ${password_hash}, 'user')
       `
+      await logActivity(sql, { userId: user.id, username: user.username, action: 'user.create', target: username.trim() })
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -221,6 +223,10 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       })
     }
 
+    // Get username before deleting for logging
+    const targetRows = await sql`SELECT username FROM users WHERE id = ${id} LIMIT 1`
+    const targetUsername = targetRows?.[0] ? (targetRows[0] as { username: string }).username : id
+
     await sql`
       DELETE FROM sessions
       WHERE user_id = ${id}
@@ -230,6 +236,8 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       DELETE FROM users
       WHERE id = ${id}
     `
+
+    await logActivity(sql, { userId: user.id, username: user.username, action: 'user.delete', target: targetUsername })
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

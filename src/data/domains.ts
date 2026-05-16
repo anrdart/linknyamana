@@ -10,9 +10,11 @@ export interface Domain {
   expiryDate?: string
   emailNotify?: boolean
   isArchived?: boolean
+  responseTimeMs?: number
 }
 
 export interface DomainCategory {
+  id?: string
   name: string
   icon: string
   domains: Domain[]

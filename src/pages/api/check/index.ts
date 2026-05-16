@@ -52,7 +52,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
     }
 
-    const status = await checkDomain(normalizedUrl)
+    const { status, responseTimeMs } = await checkDomain(normalizedUrl)
 
     try {
       await sql`
@@ -65,7 +65,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       // ignore DB errors
     }
 
-    return new Response(JSON.stringify({ url, status }), {
+    try {
+      await sql`
+        INSERT INTO uptime_history (domain_url, status, response_time_ms, checked_at)
+        VALUES (${normalizedUrl}, ${status}, ${responseTimeMs}, NOW())
+      `
+    } catch {
+      // uptime_history table might not exist yet
+    }
+
+    return new Response(JSON.stringify({ url, status, response_time_ms: responseTimeMs }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     })
