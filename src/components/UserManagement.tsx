@@ -7,9 +7,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Users, Shield, Plus, Trash2, Pencil, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const roleBadge = (role: string) => {
+  const config: Record<string, { variant: 'default' | 'secondary' | 'outline'; label: string }> = {
+    admin: { variant: 'default', label: 'Admin' },
+    editor: { variant: 'secondary', label: 'Editor' },
+    viewer: { variant: 'outline', label: 'Viewer' },
+  }
+  const c = config[role] || config.viewer
+  return <Badge variant={c.variant} className="text-[9px] px-1.5 py-0 h-4">{c.label}</Badge>
+}
 
 interface User {
   id: string
@@ -261,7 +272,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-muted-foreground" />
@@ -310,186 +321,115 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
           </div>
         ) : activeTab === 'users' ? (
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="rounded-md border divide-y">
               {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between gap-2 rounded-md border bg-card p-3"
-                >
+                <div key={user.id} className="flex items-center gap-2 px-3 py-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm truncate">{user.username}</span>
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        disabled={updatingRoleUserId === user.id}
-                        className="rounded border border-input bg-background px-1.5 py-0 text-[10px] ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="admin">admin</option>
-                        <option value="editor">editor</option>
-                        <option value="viewer">viewer</option>
-                      </select>
-                    </div>
                     {editingUserId === user.id ? (
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-1.5">
                         <input
                           type="text"
                           value={editingDisplayName}
                           onChange={(e) => setEditingDisplayName(e.target.value)}
-                          className="flex-1 rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="flex-1 rounded border border-input bg-background px-2 py-0.5 text-xs"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleEditDisplayName(user.id)
                             if (e.key === 'Escape') setEditingUserId(null)
                           }}
                           autoFocus
                         />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={() => handleEditDisplayName(user.id)}
-                          disabled={editStatus === 'saving'}
-                        >
-                          {editStatus === 'saving' ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : editStatus === 'success' ? (
-                            <Check className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Check className="h-3 w-3" />
-                          )}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={() => setEditingUserId(null)}
-                        >
-                          <span className="text-xs">x</span>
-                        </Button>
+                        <button onClick={() => handleEditDisplayName(user.id)} disabled={editStatus === 'saving'} className="text-muted-foreground hover:text-foreground">
+                          {editStatus === 'saving' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                        </button>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground truncate">{user.display_name}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        setEditingUserId(user.id)
-                        setEditingDisplayName(user.display_name)
-                      }}
-                      disabled={editingUserId === user.id}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    {confirmDeleteUserId === user.id ? (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => handleDeleteUser(user.id)}
-                          disabled={deletingUserId === user.id}
-                        >
-                          {deletingUserId === user.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            'Ya'
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => setConfirmDeleteUserId(null)}
-                        >
-                          Tidak
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{user.display_name}</span>
+                        <span className="text-[10px] text-muted-foreground">@{user.username}</span>
                       </div>
-                    ) : (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setConfirmDeleteUserId(user.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
                     )}
                   </div>
+                  <select
+                    value={user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                    disabled={updatingRoleUserId === user.id}
+                    className="rounded border border-input bg-background px-1.5 py-0.5 text-[10px] shrink-0"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="editor">Editor</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                  <button
+                    onClick={() => { setEditingUserId(user.id); setEditingDisplayName(user.display_name) }}
+                    className="text-muted-foreground hover:text-foreground shrink-0 p-1"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  {confirmDeleteUserId === user.id ? (
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => handleDeleteUser(user.id)} disabled={deletingUserId === user.id} className="text-[10px] text-destructive font-medium">
+                        {deletingUserId === user.id ? '...' : 'Ya'}
+                      </button>
+                      <button onClick={() => setConfirmDeleteUserId(null)} className="text-[10px] text-muted-foreground">Batal</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteUserId(user.id)} className="text-muted-foreground hover:text-destructive shrink-0 p-1">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
 
             {showAddForm ? (
-              <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Username</label>
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    placeholder="username"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    placeholder="Username"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Display Name</label>
                   <input
                     type="text"
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                     placeholder="Nama Tampilan"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Password</label>
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    placeholder="********"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    placeholder="Password"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Role</label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
                   >
-                    <option value="editor">Editor — WP checklist & assigned domains</option>
-                    <option value="admin">Admin — full access</option>
-                    <option value="viewer">Viewer — read only</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                    <option value="viewer">Viewer</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                   <Button
                     size="sm"
+                    className="flex-1 h-8 text-xs"
                     onClick={handleAddUser}
                     disabled={addStatus === 'saving' || !newUsername.trim() || !newDisplayName.trim() || !newPassword.trim()}
                   >
-                    {addStatus === 'saving' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Menyimpan...
-                      </>
-                    ) : addStatus === 'success' ? (
-                      <>
-                        <Check className="h-4 w-4" />
-                        Tersimpan
-                      </>
-                    ) : (
-                      'Simpan'
-                    )}
+                    {addStatus === 'saving' ? <Loader2 className="h-3 w-3 animate-spin" /> : addStatus === 'success' ? <Check className="h-3 w-3" /> : 'Simpan'}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-8 text-xs"
                     onClick={() => {
                       setShowAddForm(false)
                       setNewUsername('')
