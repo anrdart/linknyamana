@@ -37,6 +37,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
   const [newUsername, setNewUsername] = useState('')
   const [newDisplayName, setNewDisplayName] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newRole, setNewRole] = useState('editor')
   const [addStatus, setAddStatus] = useState<SaveStatus>('idle')
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
@@ -122,6 +123,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
           username: newUsername.trim(),
           display_name: newDisplayName.trim(),
           password: newPassword,
+          role: newRole,
         }),
       })
 
@@ -139,6 +141,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
         setNewUsername('')
         setNewDisplayName('')
         setNewPassword('')
+        setNewRole('editor')
         setShowAddForm(false)
         setAddStatus('idle')
         fetchUsers()
@@ -452,6 +455,18 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
                     placeholder="********"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Role</label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="editor">Editor — WP checklist & assigned domains</option>
+                    <option value="admin">Admin — full access</option>
+                    <option value="viewer">Viewer — read only</option>
+                  </select>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
@@ -480,6 +495,7 @@ export function UserManagement({ open, onOpenChange, allCategories }: UserManage
                       setNewUsername('')
                       setNewDisplayName('')
                       setNewPassword('')
+                      setNewRole('editor')
                       setAddStatus('idle')
                     }}
                   >

@@ -76,7 +76,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const body = await request.json()
-    const { username, display_name, password } = body || {}
+    const { username, display_name, password, role } = body || {}
 
     if (!username || !password) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -85,13 +85,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       })
     }
 
+    const validRoles = ['admin', 'editor', 'viewer']
+    const userRole = validRoles.includes(role) ? role : 'editor'
+
     const bcrypt = (await import('bcryptjs')).default
     const password_hash = await bcrypt.hash(password, 10)
 
     try {
       await sql`
         INSERT INTO users (username, display_name, password_hash, role)
-        VALUES (${username.trim()}, ${display_name?.trim() || username.trim()}, ${password_hash}, 'user')
+        VALUES (${username.trim()}, ${display_name?.trim() || username.trim()}, ${password_hash}, ${userRole})
       `
       await logActivity(sql, { userId: user.id, username: user.username, action: 'user.create', target: username.trim() })
       return new Response(JSON.stringify({ success: true }), {

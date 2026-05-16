@@ -26,16 +26,12 @@ export interface UserInfo {
   role: string
 }
 
-function isStaffUser(user: UserInfo): boolean {
-  return user.role === 'admin' || user.username === 'staffwebdev'
-}
-
-function isAdminUser(user: UserInfo): boolean {
+function isAdmin(user: UserInfo): boolean {
   return user.role === 'admin'
 }
 
-function canEditUser(user: UserInfo): boolean {
-  return user.role === 'admin' || user.role === 'editor'
+function isEditor(user: UserInfo): boolean {
+  return user.role === 'editor'
 }
 
 interface DashboardProps {
@@ -724,7 +720,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                         <span className="truncate flex-1 text-left">{cat.name}</span>
                         <span className="text-[10px] opacity-60">{cat.domains.filter(d => d.isArchived !== true).length}</span>
                       </button>
-                      {isStaffUser(user) && cat.id && (
+                      {isAdmin(user) && cat.id && (
                         confirmDeleteCategory === cat.id ? (
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button
@@ -777,7 +773,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </button>
           </nav>
 
-          {canEditUser(user) && (
+          {isAdmin(user) && (
             <div className="border-t px-3 py-2">
               <button
                 onClick={() => setAdminToolsOpen(!adminToolsOpen)}
@@ -804,12 +800,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                   <button onClick={() => { setProgressReportOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                     <BarChart3 className="h-3 w-3" /> Progress Report
                   </button>
-                  {isStaffUser(user) && (
+                  {isAdmin(user) && (
                     <button onClick={() => { setNotifSettingsOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                       <Bell className="h-3 w-3" /> Notifikasi
                     </button>
                   )}
-                  {isAdminUser(user) && (
+                  {isAdmin(user) && (
                     <button onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                       <Shield className="h-3 w-3" /> User
                     </button>
@@ -885,10 +881,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             onSearchQueryChange={setSearchQuery}
             expiryFilter={expiryFilter}
             onExpiryFilterChange={setExpiryFilter}
-            onNotifyExpiring={isStaffUser(user) ? handleNotifyExpiring : undefined}
+            onNotifyExpiring={isAdmin(user) ? handleNotifyExpiring : undefined}
             isNotifying={isNotifying}
             notifyResult={notifyResult}
-            isStaffwebdev={isStaffUser(user)}
+            isStaffwebdev={isAdmin(user)}
           />
 
           <div className="flex items-center gap-2">
@@ -955,7 +951,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                         completedCount={progressMap[domain.url]?.length ?? 0}
                         totalSteps={WORDPRESS_SETUP_STEPS.length}
                         onClick={handleDomainClick}
-                        isStaffwebdev={canEditUser(user)}
+                        isStaffwebdev={isAdmin(user)}
                         isArchived={domain.isArchived ?? false}
                         onArchive={handleArchiveDomain}
                         onDelete={handleDeleteDomain}
@@ -997,7 +993,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           // Then fetch from server to ensure sync
           fetchDomainMeta()
         }}
-        canEditDates={canEditUser(user)}
+        canEditDates={isAdmin(user)}
       />
 
       <AddCategoryDialog
