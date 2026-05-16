@@ -64,6 +64,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     await sql`UPDATE users SET password_hash = ${newHash} WHERE id = ${user.id}`
 
+    // Invalidate all sessions except current
+    await sql`DELETE FROM sessions WHERE user_id = ${user.id} AND token != ${token}`
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
