@@ -30,12 +30,15 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     const limitDays = Math.max(1, daysInt)
 
     const rows = await sql`
-      SELECT domain_url, registration_date, expiry_date, email_notify,
-             (EXTRACT(EPOCH FROM (expiry_date - NOW())) / 86400)::int AS days_remaining
-      FROM domain_meta
-      WHERE expiry_date IS NOT NULL
-        AND expiry_date <= NOW() + (interval '1 day' * ${limitDays})
-        AND email_notify = true
+      SELECT m.domain_url, m.registration_date, m.expiry_date, m.email_notify,
+             d.name AS domain_name,
+             (EXTRACT(EPOCH FROM (m.expiry_date - NOW())) / 86400)::int AS days_remaining
+      FROM domain_meta m
+      INNER JOIN custom_domains d ON d.url = m.domain_url
+      WHERE m.expiry_date IS NOT NULL
+        AND m.expiry_date <= NOW() + (interval '1 day' * ${limitDays})
+        AND m.email_notify = true
+        AND (d.archived = false OR d.archived IS NULL)
       ORDER BY days_remaining ASC
     `
 

@@ -237,13 +237,22 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       })
     }
 
-    const result = await sql`DELETE FROM custom_domains WHERE id = ${id} RETURNING id, name`
+    const result = await sql`DELETE FROM custom_domains WHERE id = ${id} RETURNING id, name, url`
 
     if (!result || result.length === 0) {
       return new Response(JSON.stringify({ error: 'Domain not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+
+    const deletedUrl = (result[0] as any).url
+    if (deletedUrl) {
+      await sql`DELETE FROM domain_meta WHERE domain_url = ${deletedUrl}`.catch(() => {})
+      await sql`DELETE FROM domain_status WHERE domain_url = ${deletedUrl}`.catch(() => {})
+      await sql`DELETE FROM archived_domains WHERE domain_url = ${deletedUrl}`.catch(() => {})
+      await sql`DELETE FROM uptime_history WHERE domain_url = ${deletedUrl}`.catch(() => {})
+      await sql`DELETE FROM notification_log WHERE domain_url = ${deletedUrl}`.catch(() => {})
     }
 
     await logActivity(sql, { userId: user.id, username: user.username, action: 'domain.delete', target: (result[0] as any).name ?? id })
