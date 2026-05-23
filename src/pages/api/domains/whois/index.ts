@@ -36,7 +36,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const rdap = await fetchRdapData(domain_url)
     if (!rdap) {
-      return new Response(JSON.stringify({ error: 'RDAP lookup failed or no data' }), {
+      const hostname = new URL(domain_url).hostname
+      const tld = hostname.split('.').slice(-1)[0]
+      return new Response(JSON.stringify({ error: `WHOIS data tidak tersedia untuk .${tld} — silakan isi manual` }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       })

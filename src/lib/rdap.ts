@@ -67,14 +67,9 @@ function parseEvents(data: any): { registrationDate?: string; expiryDate?: strin
   }
 }
 
-export async function fetchRdapData(
-  domainUrl: string
-): Promise<{ registrationDate?: string; expiryDate?: string } | null> {
+async function tryRdap(rdapUrl: string): Promise<{ registrationDate?: string; expiryDate?: string } | null> {
   try {
-    const hostname = new URL(domainUrl).hostname
-    const url = getRdapUrl(hostname)
-
-    const res = await fetch(url, {
+    const res = await fetch(rdapUrl, {
       signal: AbortSignal.timeout(10000),
       headers: { 'Accept': 'application/rdap+json, application/json' },
     })
@@ -83,9 +78,47 @@ export async function fetchRdapData(
     const data = await res.json()
     const result = parseEvents(data)
     if (result.registrationDate || result.expiryDate) return result
-
     return null
   } catch {
     return null
   }
+}
+
+async function tryWhoDat(hostname: string): Promise<{ registrationDate?: string; expiryDate?: string } | null> {
+  try {
+    const registrable = getRegistrableDomain(hostname)
+    const res = await fetch(`https://who-dat.as93.net/${registrable}`, {
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+
+    const data = await res.json()
+    const created = data.domain?.created_date || data.domain?.creation_date
+    const expiry = data.domain?.expiration_date
+    if (!created && !expiry) return null
+
+    return {
+      registrationDate: created?.split('T')[0],
+      expiryDate: expiry?.split('T')[0],
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchRdapData(
+  domainUrl: string
+): Promise<{ registrationDate?: string; expiryDate?: string } | null> {
+  const hostname = new URL(domainUrl).hostname
+  const rdapUrl = getRdapUrl(hostname)
+
+  // Try official RDAP registry first
+  const rdapResult = await tryRdap(rdapUrl)
+  if (rdapResult) return rdapResult
+
+  // Fallback to who-dat.as93.net (free WHOIS API)
+  const whoDatResult = await tryWhoDat(hostname)
+  if (whoDatResult) return whoDatResult
+
+  return null
 }
