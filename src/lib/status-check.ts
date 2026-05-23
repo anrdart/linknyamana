@@ -83,9 +83,28 @@ function isParkedRedirect(originalHost: string, finalUrl: string): boolean {
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
+export type DetectedCms = 'wordpress' | 'custom' | 'unknown'
+
+export function detectCms(text: string): DetectedCms {
+  const lower = text.toLowerCase()
+  const wpSignals = [
+    'wp-content/',
+    'wp-includes/',
+    'wp-json',
+    '<meta name="generator" content="wordpress',
+    'wordpress.org',
+    '/xmlrpc.php',
+    'wp-emoji',
+  ]
+  if (wpSignals.some((s) => lower.includes(s))) return 'wordpress'
+  if (lower.includes('<!doctype') || lower.includes('<html')) return 'custom'
+  return 'unknown'
+}
+
 export interface CheckResult {
   status: 'online' | 'offline'
   responseTimeMs: number
+  cms: DetectedCms
 }
 
 export async function checkDomain(url: string): Promise<CheckResult> {
@@ -103,17 +122,18 @@ export async function checkDomain(url: string): Promise<CheckResult> {
 
     const responseTimeMs = Date.now() - start
 
-    if (res.status >= 500) return { status: 'offline', responseTimeMs }
-    if (res.status === 403 || res.status === 410) return { status: 'offline', responseTimeMs }
+    if (res.status >= 500) return { status: 'offline', responseTimeMs, cms: 'unknown' }
+    if (res.status === 403 || res.status === 410) return { status: 'offline', responseTimeMs, cms: 'unknown' }
 
     if (isParkedRedirect(originalHost, res.url)) {
-      return { status: 'offline', responseTimeMs }
+      return { status: 'offline', responseTimeMs, cms: 'unknown' }
     }
 
     const text = await getTextSnippet(res, 5000)
-    return { status: analyzeContent(text), responseTimeMs }
+    const cms = detectCms(text)
+    return { status: analyzeContent(text), responseTimeMs, cms }
   } catch {
-    return { status: 'offline', responseTimeMs: Date.now() - start }
+    return { status: 'offline', responseTimeMs: Date.now() - start, cms: 'unknown' }
   }
 }
 

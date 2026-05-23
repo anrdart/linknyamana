@@ -78,19 +78,28 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const normalizedUrl = url.replace(/^http:/, 'https:').replace(/\/+$/, '')
 
         try {
-          const { status, responseTimeMs } = await checkDomain(normalizedUrl)
+          const { status, responseTimeMs, cms } = await checkDomain(normalizedUrl)
 
           if (status === 'online') online++
           else offline++
 
           try {
             await sql`
-              INSERT INTO domain_status (domain_url, status, checked_at)
-              VALUES (${normalizedUrl}, ${status}, NOW())
+              INSERT INTO domain_status (domain_url, status, detected_cms, checked_at)
+              VALUES (${normalizedUrl}, ${status}, ${cms}, NOW())
               ON CONFLICT (domain_url)
-              DO UPDATE SET status = ${status}, checked_at = NOW()
+              DO UPDATE SET status = ${status}, detected_cms = ${cms}, checked_at = NOW()
             `
-          } catch { /* */ }
+          } catch {
+            try {
+              await sql`
+                INSERT INTO domain_status (domain_url, status, checked_at)
+                VALUES (${normalizedUrl}, ${status}, NOW())
+                ON CONFLICT (domain_url)
+                DO UPDATE SET status = ${status}, checked_at = NOW()
+              `
+            } catch { /* */ }
+          }
 
           try {
             await sql`

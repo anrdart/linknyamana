@@ -272,20 +272,39 @@ export function DomainDetailDialog({
           )}
         </div>
 
-        <div className="space-y-1 rounded-lg bg-muted/50 p-3">
-          <h4 className="text-sm font-semibold">
-            WordPress Setup Checklist ({WORDPRESS_SETUP_STEPS.length} steps)
-          </h4>
-          <p className="text-xs text-muted-foreground">
-            Track your WordPress setup progress. Klik baris untuk menandai selesai. Perubahan tersimpan otomatis.
-          </p>
-        </div>
+        {domain.cms !== 'custom' && (
+          <>
+            <div className="space-y-1 rounded-lg bg-muted/50 p-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold">
+                  WordPress Setup Checklist ({WORDPRESS_SETUP_STEPS.length} steps)
+                </h4>
+                {domain.cms === 'wordpress' && (
+                  <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium">WordPress</span>
+                )}
+                {domain.cms === 'unknown' && (
+                  <span className="text-[10px] text-muted-foreground">CMS belum terdeteksi</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Track your WordPress setup progress. Klik baris untuk menandai selesai. Perubahan tersimpan otomatis.
+              </p>
+            </div>
 
-        <WordPressChecklist
-          domainUrl={domain.url}
-          initialTasks={initialTasks}
-          onProgressChange={onProgressChange}
-        />
+            <WordPressChecklist
+              domainUrl={domain.url}
+              initialTasks={initialTasks}
+              onProgressChange={onProgressChange}
+            />
+          </>
+        )}
+
+        {domain.cms === 'custom' && (
+          <div className="rounded-lg bg-muted/50 p-4 text-center">
+            <p className="text-sm text-muted-foreground">Domain ini menggunakan framework non-WordPress</p>
+            <p className="text-xs text-muted-foreground mt-1">WordPress checklist tidak ditampilkan</p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

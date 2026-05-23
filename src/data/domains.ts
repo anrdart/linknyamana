@@ -11,6 +11,7 @@ export interface Domain {
   emailNotify?: boolean
   isArchived?: boolean
   responseTimeMs?: number
+  cms?: 'wordpress' | 'custom' | 'unknown'
 }
 
 export interface DomainCategory {

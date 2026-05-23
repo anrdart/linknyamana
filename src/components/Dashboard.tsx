@@ -184,10 +184,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const { data } = await res.json()
       if (!data || !Array.isArray(data)) return
 
-      const statusByUrl = new Map(
+      const cacheByUrl = new Map(
         data
           .filter((row: any) => !!row.domain_url && row.status)
-          .map((row: any) => [normalizeUrlForMatching(row.domain_url), row.status as string])
+          .map((row: any) => [normalizeUrlForMatching(row.domain_url), { status: row.status as string, cms: row.detected_cms as string | undefined }])
       )
 
       setCategories((prev) =>
@@ -195,9 +195,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           ...cat,
           domains: cat.domains.map((domain) => {
             const normalizedDomainUrl = normalizeUrlForMatching(domain.url)
-            const cachedStatus = statusByUrl.get(normalizedDomainUrl)
-            if (!cachedStatus) return domain
-            return { ...domain, status: cachedStatus }
+            const cached = cacheByUrl.get(normalizedDomainUrl)
+            if (!cached) return domain
+            return { ...domain, status: cached.status, cms: cached.cms as Domain['cms'] }
           }),
         }))
       )
@@ -320,12 +320,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             const data = await res.json()
             const status = (data.status ?? 'offline') as 'online' | 'offline'
             const responseTimeMs = data.response_time_ms as number | undefined
+            const cms = (data.cms ?? undefined) as Domain['cms']
 
             setCategories((prev) =>
               prev.map((cat) => ({
                 ...cat,
                 domains: cat.domains.map((d) =>
-                  d.url === domain.url ? { ...d, status, responseTimeMs, lastChecked: new Date() } : d
+                  d.url === domain.url ? { ...d, status, responseTimeMs, cms, lastChecked: new Date() } : d
                 ),
               }))
             )
@@ -393,12 +394,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const data = await res.json()
       const status = (data.status ?? 'offline') as 'online' | 'offline'
       const responseTimeMs = data.response_time_ms as number | undefined
+      const cms = (data.cms ?? undefined) as Domain['cms']
 
       setCategories((prev) =>
         prev.map((cat) => ({
           ...cat,
           domains: cat.domains.map((d) =>
-            d.url === domain.url ? { ...d, status, responseTimeMs, lastChecked: new Date(), lastDeepChecked: new Date() } : d
+            d.url === domain.url ? { ...d, status, responseTimeMs, cms, lastChecked: new Date(), lastDeepChecked: new Date() } : d
           ),
         }))
       )

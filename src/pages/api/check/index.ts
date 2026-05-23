@@ -52,17 +52,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
     }
 
-    const { status, responseTimeMs } = await checkDomain(normalizedUrl)
+    const { status, responseTimeMs, cms } = await checkDomain(normalizedUrl)
 
     try {
       await sql`
-        INSERT INTO domain_status (domain_url, status, checked_at)
-        VALUES (${normalizedUrl}, ${status}, NOW())
+        INSERT INTO domain_status (domain_url, status, detected_cms, checked_at)
+        VALUES (${normalizedUrl}, ${status}, ${cms}, NOW())
         ON CONFLICT (domain_url)
-        DO UPDATE SET status = ${status}, checked_at = NOW()
+        DO UPDATE SET status = ${status}, detected_cms = ${cms}, checked_at = NOW()
       `
     } catch {
-      // ignore DB errors
+      try {
+        await sql`
+          INSERT INTO domain_status (domain_url, status, checked_at)
+          VALUES (${normalizedUrl}, ${status}, NOW())
+          ON CONFLICT (domain_url)
+          DO UPDATE SET status = ${status}, checked_at = NOW()
+        `
+      } catch { /* */ }
     }
 
     try {
@@ -70,11 +77,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         INSERT INTO uptime_history (domain_url, status, response_time_ms, checked_at)
         VALUES (${normalizedUrl}, ${status}, ${responseTimeMs}, NOW())
       `
-    } catch {
-      // uptime_history table might not exist yet
-    }
+    } catch { /* */ }
 
-    return new Response(JSON.stringify({ url, status, response_time_ms: responseTimeMs }), {
+    return new Response(JSON.stringify({ url, status, response_time_ms: responseTimeMs, cms }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     })
