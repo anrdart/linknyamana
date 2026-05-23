@@ -205,28 +205,30 @@ export function DomainCard({
           )}
         </div>
 
-        <div className="mt-3 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              {completedCount}/{totalSteps} steps
-            </span>
-            <span>{progress}%</span>
+        {domain.cms !== 'custom' && (
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                {completedCount}/{totalSteps} steps
+              </span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-700 ease-out',
+                  progress === 100
+                    ? 'bg-emerald-500'
+                    : progress > 0
+                      ? 'bg-blue-500'
+                      : 'bg-muted-foreground/30'
+                )}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-700 ease-out',
-                progress === 100
-                  ? 'bg-emerald-500'
-                  : progress > 0
-                    ? 'bg-blue-500'
-                    : 'bg-muted-foreground/30'
-              )}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
