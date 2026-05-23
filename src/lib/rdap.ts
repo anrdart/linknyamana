@@ -17,17 +17,17 @@ const RDAP_SERVERS: Record<string, string> = {
   'tech': 'https://rdap.centralnic.com/tech/domain/',
   'work': 'https://rdap.centralnic.com/work/domain/',
   // Indonesian ccTLDs — all managed by PANDI
-  'id': 'https://rdap.pandi.or.id/domain/',
-  'web.id': 'https://rdap.pandi.or.id/domain/',
-  'my.id': 'https://rdap.pandi.or.id/domain/',
-  'sch.id': 'https://rdap.pandi.or.id/domain/',
-  'co.id': 'https://rdap.pandi.or.id/domain/',
-  'or.id': 'https://rdap.pandi.or.id/domain/',
-  'ac.id': 'https://rdap.pandi.or.id/domain/',
-  'go.id': 'https://rdap.pandi.or.id/domain/',
-  'biz.id': 'https://rdap.pandi.or.id/domain/',
-  'ponpes.id': 'https://rdap.pandi.or.id/domain/',
-  'desa.id': 'https://rdap.pandi.or.id/domain/',
+  'id': 'https://rdap.pandi.id/rdap/domain/',
+  'web.id': 'https://rdap.pandi.id/rdap/domain/',
+  'my.id': 'https://rdap.pandi.id/rdap/domain/',
+  'sch.id': 'https://rdap.pandi.id/rdap/domain/',
+  'co.id': 'https://rdap.pandi.id/rdap/domain/',
+  'or.id': 'https://rdap.pandi.id/rdap/domain/',
+  'ac.id': 'https://rdap.pandi.id/rdap/domain/',
+  'go.id': 'https://rdap.pandi.id/rdap/domain/',
+  'biz.id': 'https://rdap.pandi.id/rdap/domain/',
+  'ponpes.id': 'https://rdap.pandi.id/rdap/domain/',
+  'desa.id': 'https://rdap.pandi.id/rdap/domain/',
 }
 
 function getRegistrableDomain(hostname: string): string {
