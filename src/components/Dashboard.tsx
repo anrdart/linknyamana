@@ -10,9 +10,10 @@ import { UserManagement } from '@/components/UserManagement'
 import { PasswordChangeDialog } from '@/components/PasswordChangeDialog'
 import { BulkImportDialog } from '@/components/BulkImportDialog'
 import { ProgressReportDialog } from '@/components/ProgressReportDialog'
+import { ConsoleLogDialog } from '@/components/ConsoleLogDialog'
 import { AnalyticsPanel } from '@/components/AnalyticsPanel'
 import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell } from 'lucide-react'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -73,6 +74,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null)
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
   const [progressReportOpen, setProgressReportOpen] = useState(false)
+  const [consoleLogOpen, setConsoleLogOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(() => typeof window !== 'undefined' ? getTheme() === 'dark' : false)
   const [sortBy, setSortBy] = useState<'default' | 'status' | 'expiry' | 'name'>('default')
   const [showAnalytics, setShowAnalytics] = useState(false)
@@ -812,6 +814,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                       <Shield className="h-3 w-3" /> User
                     </button>
                   )}
+                  {isAdmin(user) && (
+                    <button onClick={() => { setConsoleLogOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <Terminal className="h-3 w-3" /> Console Log
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -995,6 +1002,15 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           // Then fetch from server to ensure sync
           fetchDomainMeta()
         }}
+        onCmsChange={(domainUrl, cms) => {
+          setSelectedDomain((prev) => (prev && prev.url === domainUrl ? { ...prev, cms } : prev))
+          setCategories((prev) =>
+            prev.map((cat) => ({
+              ...cat,
+              domains: cat.domains.map((d) => (d.url === domainUrl ? { ...d, cms } : d)),
+            }))
+          )
+        }}
         canEditDates={isAdmin(user)}
       />
 
@@ -1048,6 +1064,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       <ProgressReportDialog
         open={progressReportOpen}
         onOpenChange={setProgressReportOpen}
+      />
+      <ConsoleLogDialog
+        open={consoleLogOpen}
+        onOpenChange={setConsoleLogOpen}
       />
     </div>
   )

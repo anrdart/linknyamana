@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro'
 import { env } from 'cloudflare:workers'
 import { getDb } from '@/lib/db'
-import { validateSession } from '@/lib/auth'
+import { validateSession, isStaff } from '@/lib/auth'
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   const token = cookies.get('session')?.value
@@ -19,16 +19,33 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     const url = new URL(request.url)
     const format = url.searchParams.get('format')
 
-    const rows = await sql`
-      SELECT d.name, d.url, d.category_name, d.archived,
-             p.completed_tasks,
-             m.expiry_date, m.deadline
-      FROM custom_domains d
-      LEFT JOIN domain_progress p ON p.domain_url = d.url AND p.user_id = ${user.id}
-      LEFT JOIN domain_meta m ON m.domain_url = d.url
-      WHERE d.archived = false
-      ORDER BY d.category_name, d.name
-    `
+    const rows = isStaff(user)
+      ? await sql`
+          SELECT d.name, d.url, d.category_name, d.archived,
+                 p.completed_tasks,
+                 m.expiry_date, m.deadline
+          FROM custom_domains d
+          LEFT JOIN LATERAL (
+            SELECT completed_tasks
+            FROM domain_progress p
+            WHERE p.domain_url = d.url
+            ORDER BY jsonb_array_length(p.completed_tasks) DESC
+            LIMIT 1
+          ) p ON true
+          LEFT JOIN domain_meta m ON m.domain_url = d.url
+          WHERE d.archived = false
+          ORDER BY d.category_name, d.name
+        `
+      : await sql`
+          SELECT d.name, d.url, d.category_name, d.archived,
+                 p.completed_tasks,
+                 m.expiry_date, m.deadline
+          FROM custom_domains d
+          LEFT JOIN domain_progress p ON p.domain_url = d.url AND p.user_id = ${user.id}
+          LEFT JOIN domain_meta m ON m.domain_url = d.url
+          WHERE d.archived = false
+          ORDER BY d.category_name, d.name
+        `
 
     const data = (rows || []).map((r: any) => {
       const tasks = r.completed_tasks || []

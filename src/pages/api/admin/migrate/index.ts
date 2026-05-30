@@ -239,20 +239,20 @@ const migrations: Record<string, string[]> = {
   ],
   '004_telegram_config': [
     `CREATE TABLE IF NOT EXISTS telegram_config (
-      id SERIAL PRIMARY KEY,
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
       bot_token TEXT NOT NULL,
       chat_id TEXT NOT NULL,
-      enabled BOOLEAN NOT NULL DEFAULT true,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      enabled BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
   ],
   '004_notification_log': [
     `CREATE TABLE IF NOT EXISTS notification_log (
-      id SERIAL PRIMARY KEY,
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
       domain_url TEXT NOT NULL,
       channel TEXT NOT NULL,
       event_type TEXT NOT NULL,
-      sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      sent_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `CREATE INDEX IF NOT EXISTS idx_notification_log_lookup ON notification_log (domain_url, event_type, sent_at)`,
   ],

@@ -1,4 +1,5 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless'
+import { serverLog } from './logger'
 
 export async function logActivity(
   sql: NeonQueryFunction<false, false>,
@@ -16,4 +17,10 @@ export async function logActivity(
   } catch {
     /* fire and forget */
   }
+
+  // Mirror to the live console feed
+  const msg = params.target
+    ? `${params.username} · ${params.action} · ${params.target}`
+    : `${params.username} · ${params.action}`
+  await serverLog(sql, 'info', 'activity', msg, params.details).catch(() => {})
 }

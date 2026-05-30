@@ -156,6 +156,13 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       })
     }
 
+    if (role != null && !['admin', 'editor', 'viewer'].includes(role)) {
+      return new Response(JSON.stringify({ error: 'Invalid role' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     if (password) {
       const bcrypt = (await import('bcryptjs')).default
       const password_hash = await bcrypt.hash(password, 10)
@@ -221,6 +228,13 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
 
     if (!id) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (id === user.id) {
+      return new Response(JSON.stringify({ error: 'Tidak bisa menghapus akun sendiri' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })

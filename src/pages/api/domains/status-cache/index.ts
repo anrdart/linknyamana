@@ -23,7 +23,9 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     const data = await sql`
-      SELECT domain_url, status, detected_cms
+      SELECT domain_url, status,
+             COALESCE(cms_override, detected_cms) AS detected_cms,
+             cms_override
       FROM domain_status
       ORDER BY domain_url
     `

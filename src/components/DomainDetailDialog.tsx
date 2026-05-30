@@ -24,6 +24,7 @@ interface DomainDetailDialogProps {
     domainUrl: string,
     meta: { registrationDate: string; expiryDate: string; emailNotify: boolean }
   ) => void
+  onCmsChange?: (domainUrl: string, cms: 'wordpress' | 'custom' | 'unknown') => void
   canEditDates?: boolean
 }
 
@@ -36,6 +37,7 @@ export function DomainDetailDialog({
   onProgressChange,
   initialTasks,
   onDomainMetaUpdate,
+  onCmsChange,
   canEditDates = false,
 }: DomainDetailDialogProps) {
   const [registrationDate, setRegistrationDate] = useState('')
@@ -45,6 +47,7 @@ export function DomainDetailDialog({
   const [saveError, setSaveError] = useState('')
   const [whoisLoading, setWhoisLoading] = useState(false)
   const [whoisError, setWhoisError] = useState('')
+  const [cmsSaving, setCmsSaving] = useState(false)
 
   // Helper to convert date string or Date object to YYYY-MM-DD format for input[type="date"]
   const formatDateForInput = (dateValue: string | Date | undefined): string => {
@@ -111,6 +114,27 @@ export function DomainDetailDialog({
       setSaveStatus('error')
       setSaveError((err as Error)?.message || 'Gagal menyimpan')
       setTimeout(() => { setSaveStatus('idle'); setSaveError('') }, 5000)
+    }
+  }
+
+  const handleCmsOverride = async (value: 'wordpress' | 'custom' | 'auto') => {
+    if (!domain) return
+    setCmsSaving(true)
+    try {
+      const res = await fetch('/api/domains/cms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain_url: domain.url, cms: value }),
+      })
+      if (res.ok) {
+        // 'auto' clears override → falls back to auto-detected value (unknown until next scan)
+        const effective = value === 'auto' ? 'unknown' : value
+        onCmsChange?.(domain.url, effective)
+      }
+    } catch {
+      // ignore — UI keeps previous value
+    } finally {
+      setCmsSaving(false)
     }
   }
 
@@ -271,6 +295,30 @@ export function DomainDetailDialog({
             </>
           )}
         </div>
+
+        {canEditDates && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-dashed p-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">Tipe CMS</p>
+              <p className="text-[10px] text-muted-foreground">
+                Ubah manual jika deteksi otomatis salah
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {cmsSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              <select
+                value={domain.cms === 'custom' ? 'custom' : domain.cms === 'wordpress' ? 'wordpress' : 'auto'}
+                onChange={(e) => handleCmsOverride(e.target.value as 'wordpress' | 'custom' | 'auto')}
+                disabled={cmsSaving}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="auto">Auto-detect</option>
+                <option value="wordpress">WordPress</option>
+                <option value="custom">Non-WordPress</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         {domain.cms !== 'custom' && (
           <>

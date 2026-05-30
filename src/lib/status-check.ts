@@ -107,33 +107,49 @@ export interface CheckResult {
   cms: DetectedCms
 }
 
-export async function checkDomain(url: string): Promise<CheckResult> {
-  const normalizedUrl = url.replace(/^http:/, 'https:')
+async function fetchAndAnalyze(
+  targetUrl: string,
+  timeoutMs: number
+): Promise<CheckResult> {
+  const start = Date.now()
+  const originalHost = new URL(targetUrl).hostname
+  const res = await fetch(targetUrl, {
+    method: 'GET',
+    redirect: 'follow',
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: { 'User-Agent': UA },
+  })
+
+  const responseTimeMs = Date.now() - start
+
+  if (res.status >= 500) return { status: 'offline', responseTimeMs, cms: 'unknown' }
+  if (res.status === 403 || res.status === 410) return { status: 'offline', responseTimeMs, cms: 'unknown' }
+
+  if (isParkedRedirect(originalHost, res.url)) {
+    return { status: 'offline', responseTimeMs, cms: 'unknown' }
+  }
+
+  const text = await getTextSnippet(res, 5000)
+  const cms = detectCms(text)
+  return { status: analyzeContent(text), responseTimeMs, cms }
+}
+
+export async function checkDomain(url: string, timeoutMs = 15000): Promise<CheckResult> {
+  const httpsUrl = url.replace(/^http:/, 'https:')
   const start = Date.now()
 
   try {
-    const originalHost = new URL(normalizedUrl).hostname
-    const res = await fetch(normalizedUrl, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15000),
-      headers: { 'User-Agent': UA },
-    })
-
-    const responseTimeMs = Date.now() - start
-
-    if (res.status >= 500) return { status: 'offline', responseTimeMs, cms: 'unknown' }
-    if (res.status === 403 || res.status === 410) return { status: 'offline', responseTimeMs, cms: 'unknown' }
-
-    if (isParkedRedirect(originalHost, res.url)) {
-      return { status: 'offline', responseTimeMs, cms: 'unknown' }
-    }
-
-    const text = await getTextSnippet(res, 5000)
-    const cms = detectCms(text)
-    return { status: analyzeContent(text), responseTimeMs, cms }
+    // Try HTTPS first.
+    return await fetchAndAnalyze(httpsUrl, timeoutMs)
   } catch {
-    return { status: 'offline', responseTimeMs: Date.now() - start, cms: 'unknown' }
+    // HTTPS fetch failed (likely SSL: expired/self-signed cert).
+    // Retry once over plain HTTP — site may serve content despite broken SSL.
+    const httpUrl = httpsUrl.replace(/^https:/, 'http:')
+    try {
+      return await fetchAndAnalyze(httpUrl, timeoutMs)
+    } catch {
+      return { status: 'offline', responseTimeMs: Date.now() - start, cms: 'unknown' }
+    }
   }
 }
 

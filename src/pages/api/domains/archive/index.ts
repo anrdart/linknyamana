@@ -24,9 +24,10 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     const data = await sql`
-      SELECT domain_url, archived_at
-      FROM archived_domains
-      ORDER BY archived_at DESC
+      SELECT url AS domain_url, created_at AS archived_at
+      FROM custom_domains
+      WHERE archived = true
+      ORDER BY created_at DESC
     `
 
     return new Response(JSON.stringify({ data }), {
@@ -80,23 +81,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const normalized = normalizeUrl(domain_url)
 
-    if (archived === true) {
-      await sql`
-        INSERT INTO archived_domains (domain_url)
-        VALUES (${normalized})
-        ON CONFLICT (domain_url) DO NOTHING
-      `
-      await sql`
-        UPDATE custom_domains SET archived = true WHERE url = ${normalized}
-      `
-    } else {
-      await sql`
-        DELETE FROM archived_domains WHERE domain_url = ${normalized}
-      `
-      await sql`
-        UPDATE custom_domains SET archived = false WHERE url = ${normalized}
-      `
-    }
+    await sql`
+      UPDATE custom_domains SET archived = ${archived === true} WHERE url = ${normalized}
+    `
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

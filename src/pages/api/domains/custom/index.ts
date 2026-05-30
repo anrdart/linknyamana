@@ -250,7 +250,6 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     if (deletedUrl) {
       await sql`DELETE FROM domain_meta WHERE domain_url = ${deletedUrl}`.catch(() => {})
       await sql`DELETE FROM domain_status WHERE domain_url = ${deletedUrl}`.catch(() => {})
-      await sql`DELETE FROM archived_domains WHERE domain_url = ${deletedUrl}`.catch(() => {})
       await sql`DELETE FROM uptime_history WHERE domain_url = ${deletedUrl}`.catch(() => {})
       await sql`DELETE FROM notification_log WHERE domain_url = ${deletedUrl}`.catch(() => {})
     }
