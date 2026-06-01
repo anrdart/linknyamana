@@ -13,12 +13,14 @@ import { ProgressReportDialog } from '@/components/ProgressReportDialog'
 import { ConsoleLogDialog } from '@/components/ConsoleLogDialog'
 import { AnalyticsPanel } from '@/components/AnalyticsPanel'
 import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell, Terminal } from 'lucide-react'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell, Terminal, PanelLeftClose, PanelLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { toggleTheme, getTheme } from '@/lib/theme'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useIsTabletUp, useIsDesktopUp } from '@/hooks/useMediaQuery'
+import { getSidebarPref, toggleSidebarPref } from '@/lib/sidebar'
 
 export interface UserInfo {
   id: string
@@ -58,6 +60,22 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [expiryFilter, setExpiryFilter] = useState<string | null>(null)
   const [progressMap, setProgressMap] = useState<ProgressMap>({})
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarPref, setSidebarPrefState] = useState<boolean | null>(() => getSidebarPref())
+  const isTabletUp = useIsTabletUp()
+  const isDesktopUp = useIsDesktopUp()
+  // Rail (icons-only) for the permanent sidebar shown at >=lg.
+  // Pref wins when set; otherwise default-collapse on tablet (md..lg), full on desktop.
+  const railMode = isDesktopUp
+    ? (sidebarPref ?? false)
+    : isTabletUp
+      ? (sidebarPref ?? true)
+      : false
+
+  const handleToggleSidebar = () => {
+    const current = sidebarPref ?? (isTabletUp && !isDesktopUp)
+    const next = toggleSidebarPref(current)
+    setSidebarPrefState(next)
+  }
   const [initialLoading, setInitialLoading] = useState(true)
   const [userMgmtOpen, setUserMgmtOpen] = useState(false)
   const [isNotifying, setIsNotifying] = useState(false)
@@ -646,29 +664,49 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     <div className="flex h-screen bg-background">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+          'fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-all duration-300 md:translate-x-0 md:static md:z-auto',
+          railMode ? 'md:w-16' : 'md:w-64',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center gap-2 border-b p-4">
-            <Shield className="h-6 w-6 text-primary" />
-            <div className="min-w-0 flex-1">
+          <div className={cn('flex items-center gap-2 border-b p-4', railMode && 'md:justify-center md:px-2')}>
+            <Shield className="h-6 w-6 text-primary shrink-0" />
+            <div className={cn('min-w-0 flex-1', railMode && 'md:hidden')}>
               <h1 className="font-bold text-sm">LinkNyaMana</h1>
               <p className="text-[10px] text-muted-foreground truncate">{user.display_name}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden shrink-0"
+              className={cn('shrink-0 hidden md:inline-flex', railMode && 'md:hidden')}
+              onClick={handleToggleSidebar}
+              title="Ciutkan sidebar"
+            >
+              <PanelLeftClose className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden shrink-0"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
 
+          {railMode && (
+            <button
+              onClick={handleToggleSidebar}
+              className="hidden md:flex items-center justify-center border-b p-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              title="Lebarkan sidebar"
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
+          )}
+
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            <div className="relative mb-2">
+            <div className={cn('relative mb-2', railMode && 'md:hidden')}>
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
               <input
                 type="text"
@@ -686,6 +724,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
+              title="Semua Domain"
               onClick={() => {
                 setActiveCategory(null)
                 setViewMode('active')
@@ -693,14 +732,15 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 setSidebarOpen(false)
               }}
             >
-              <ChevronDown className={cn('h-4 w-4 transition-transform', categoriesExpanded && 'rotate-180')} />
-              <LayoutDashboard className="h-4 w-4" />
-              <span>Semua Domain</span>
+              <ChevronDown className={cn('h-4 w-4 transition-transform shrink-0', categoriesExpanded && 'rotate-180', railMode && 'md:hidden')} />
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              <span className={cn(railMode && 'md:hidden')}>Semua Domain</span>
             </button>
 
             <div className={cn(
               'overflow-hidden transition-all duration-200',
-              categoriesExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+              categoriesExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0',
+              railMode && 'md:hidden'
             )}>
               <div className="pl-4 space-y-1">
                 {categories
@@ -766,19 +806,20 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                   ? 'bg-muted text-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
+              title="Arsip"
               onClick={() => {
                 setActiveCategory(null)
                 setViewMode('archive')
                 setSidebarOpen(false)
               }}
             >
-              <Archive className="h-4 w-4" />
-              <span>Arsip</span>
+              <Archive className="h-4 w-4 shrink-0" />
+              <span className={cn(railMode && 'md:hidden')}>Arsip</span>
             </button>
           </nav>
 
           {isAdmin(user) && (
-            <div className="border-t px-3 py-2">
+            <div className={cn('border-t px-3 py-2', railMode && 'md:hidden')}>
               <button
                 onClick={() => setAdminToolsOpen(!adminToolsOpen)}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -824,7 +865,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </div>
           )}
 
-          <div className="shrink-0 border-t px-3 py-2 flex items-center gap-1">
+          <div className={cn('shrink-0 border-t px-3 py-2 flex items-center gap-1', railMode && 'md:flex-wrap md:justify-center')}>
             <button onClick={() => { setPasswordDialogOpen(true); setSidebarOpen(false) }} className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="Ganti Password">
               <KeyRound className="h-3.5 w-3.5" />
             </button>
@@ -834,8 +875,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             <button onClick={onLogout} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Keluar">
               <LogOut className="h-3.5 w-3.5" />
             </button>
-            <span className="flex-1" />
-            <span className="text-[9px] text-muted-foreground" title="/ search · r refresh · Esc close">
+            <span className={cn('flex-1', railMode && 'md:hidden')} />
+            <span className={cn('text-[9px] text-muted-foreground', railMode && 'md:hidden')} title="/ search · r refresh · Esc close">
               {user.display_name.split(' ')[0]}
             </span>
           </div>
@@ -844,13 +885,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-card px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
           <Button
             variant="ghost"
             size="icon"
