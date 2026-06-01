@@ -98,7 +98,7 @@ export function StatusSummary({
           placeholder="Cari domain..."
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
-          className="w-full rounded-lg border border-input bg-background px-9 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="w-full rounded-lg border border-input bg-background px-9 py-2 text-base sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         />
       </div>
 
@@ -207,35 +207,35 @@ export function StatusSummary({
         </Card>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-      <div className="flex flex-wrap gap-1 rounded-lg border bg-card p-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
+      <div className="flex shrink-0 gap-1 rounded-lg border bg-card p-1">
           <Badge
             variant={statusFilter === 'all' ? 'default' : 'outline'}
-            className="cursor-pointer"
+            className="cursor-pointer shrink-0 px-2.5 py-1"
             onClick={() => onStatusFilterChange('all')}
           >
             All ({total})
           </Badge>
           <Badge
             variant={statusFilter === 'online' ? 'success' : 'outline'}
-            className="cursor-pointer"
+            className="cursor-pointer shrink-0 px-2.5 py-1"
             onClick={() => onStatusFilterChange('online')}
           >
             Online ({online})
           </Badge>
           <Badge
             variant={statusFilter === 'offline' ? 'destructive' : 'outline'}
-            className="cursor-pointer"
+            className="cursor-pointer shrink-0 px-2.5 py-1"
             onClick={() => onStatusFilterChange('offline')}
           >
             Offline ({offline})
           </Badge>
         </div>
 
-        <div className="flex flex-wrap gap-1">
+        <div className="flex shrink-0 gap-1 sm:flex-wrap">
           <Badge
             variant={activeCategory === null ? 'default' : 'outline'}
-            className="cursor-pointer"
+            className="cursor-pointer shrink-0 px-2.5 py-1"
             onClick={() => onCategoryChange(null)}
           >
             All Categories
@@ -244,7 +244,7 @@ export function StatusSummary({
             <Badge
               key={cat.name}
               variant={activeCategory === cat.name ? 'default' : 'outline'}
-              className="cursor-pointer"
+              className="cursor-pointer shrink-0 px-2.5 py-1"
               onClick={() => onCategoryChange(cat.name)}
             >
               {cat.icon} {cat.name}
@@ -253,45 +253,45 @@ export function StatusSummary({
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-lg border bg-card p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
         <Badge
           variant={expiryFilter === null ? 'default' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange(null)}
         >
           Semua
         </Badge>
         <Badge
           variant={expiryFilter === 'expired' ? 'destructive' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange('expired')}
         >
           Expired
         </Badge>
         <Badge
           variant={expiryFilter === '7' ? 'default' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange('7')}
         >
           7 Hari
         </Badge>
         <Badge
           variant={expiryFilter === '14' ? 'default' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange('14')}
         >
           14 Hari
         </Badge>
         <Badge
           variant={expiryFilter === '30' ? 'default' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange('30')}
         >
           30 Hari
         </Badge>
         <Badge
           variant={expiryFilter === '60' ? 'default' : 'outline'}
-          className="cursor-pointer"
+          className="cursor-pointer shrink-0 px-2.5 py-1"
           onClick={() => onExpiryFilterChange('60')}
         >
           60 Hari
