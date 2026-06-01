@@ -232,7 +232,7 @@ export function StatusSummary({
           </Badge>
         </div>
 
-        <div className="flex shrink-0 gap-1 sm:flex-wrap">
+        <div className="flex shrink-0 gap-1 sm:flex-wrap sm:shrink sm:min-w-0">
           <Badge
             variant={activeCategory === null ? 'default' : 'outline'}
             className="cursor-pointer shrink-0 px-2.5 py-1"
