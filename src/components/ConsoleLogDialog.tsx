@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Terminal, Trash2, Pause, Play, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Terminal, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface LogEntry {
@@ -18,7 +17,7 @@ interface ConsoleLogDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const POLL_MS = 3000
+const POLL_MS = 1000
 const MAX_RENDERED = 500
 
 const levelColor: Record<string, string> = {
@@ -30,13 +29,10 @@ const levelColor: Record<string, string> = {
 
 export function ConsoleLogDialog({ open, onOpenChange }: ConsoleLogDialogProps) {
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(false)
   const [levelFilter, setLevelFilter] = useState<string>('')
   const lastIdRef = useRef<string>('0')
   const scrollRef = useRef<HTMLDivElement>(null)
-  const pausedRef = useRef(paused)
-  pausedRef.current = paused
 
   const poll = useCallback(async (reset = false) => {
     try {
@@ -75,28 +71,16 @@ export function ConsoleLogDialog({ open, onOpenChange }: ConsoleLogDialogProps) 
   // Polling loop
   useEffect(() => {
     if (!open) return
-    const interval = setInterval(() => {
-      if (!pausedRef.current) poll(false)
-    }, POLL_MS)
+    const interval = setInterval(() => poll(false), POLL_MS)
     return () => clearInterval(interval)
   }, [open, poll])
 
-  // Auto-scroll to bottom on new logs (unless paused)
+  // Auto-scroll to bottom on new logs
   useEffect(() => {
-    if (!paused && scrollRef.current) {
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [logs, paused])
-
-  const handleClear = async () => {
-    try {
-      await fetch('/api/admin/logs', { method: 'DELETE' })
-      setLogs([])
-      lastIdRef.current = '0'
-    } catch {
-      /* ignore */
-    }
-  }
+  }, [logs])
 
   const fmtTime = (iso: string) => {
     try {
@@ -108,17 +92,16 @@ export function ConsoleLogDialog({ open, onOpenChange }: ConsoleLogDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl" aria-describedby={undefined}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Terminal className="h-5 w-5 text-muted-foreground" />
             <DialogTitle>Console Log</DialogTitle>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className={cn('h-1.5 w-1.5 rounded-full', paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse')} />
-              {paused ? 'Paused' : 'Live'}
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
             </span>
           </div>
-          <DialogDescription>Output server global — diperbarui tiap 3 detik</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2">
@@ -133,12 +116,6 @@ export function ConsoleLogDialog({ open, onOpenChange }: ConsoleLogDialogProps) 
             <option value="error">Error</option>
             <option value="debug">Debug</option>
           </select>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPaused((p) => !p)}>
-            {paused ? <><Play className="h-3 w-3" /> Resume</> : <><Pause className="h-3 w-3" /> Pause</>}
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={handleClear}>
-            <Trash2 className="h-3 w-3" /> Clear
-          </Button>
           <span className="ml-auto text-[10px] text-muted-foreground">{logs.length} baris</span>
         </div>
 
