@@ -16,9 +16,8 @@
 
 | File | Responsibility |
 |---|---|
-| `src/hooks/useMediaQuery.ts` | **new** — React hook returning whether a media query matches; SSR-safe |
+| `src/hooks/useMediaQuery.ts` | **new** — React hook returning whether a media query matches; lazy-inits from `matchMedia` (no flash) |
 | `src/lib/sidebar.ts` | **new** — read/write/toggle sidebar collapse preference in localStorage (mirrors `theme.ts`) |
-| `src/layouts/Layout.astro` | inline anti-flash script that pre-sets sidebar class on `<html>` |
 | `src/components/Dashboard.tsx` | sidebar tri-state rendering + toggle button, domain grid columns, main padding, sort/analytics row |
 | `src/components/StatusSummary.tsx` | stat-cards columns, phone horizontal-scroll filter rows, search font size |
 | `src/components/ui/dialog.tsx` | adaptive padding + max-width clamp on phone |
@@ -434,11 +433,15 @@ Create `src/hooks/useMediaQuery.ts`:
 import { useState, useEffect } from 'react'
 
 /**
- * SSR-safe media-query hook. Returns false on the server and during the
- * first client render, then updates after mount to the real match value.
+ * Media-query hook. Lazily initializes from `window.matchMedia` on the first
+ * render so the correct value is available before paint (no flash). The
+ * Dashboard island is client-only — see Task 7 — so `window` always exists
+ * here; the `typeof window` guard is defensive only.
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -716,7 +719,7 @@ Replace with (hide text in rail mode; show a collapse toggle on `md+`; keep the 
 
 - [ ] **Step 7: Add an expand button shown only in rail mode**
 
-Immediately after the closing `</div>` of the header block from Step 7, add a rail-only expand button:
+Immediately after the closing `</div>` of the sidebar header block (the one updated in the previous step), add a rail-only expand button:
 
 ```tsx
           {railMode && (
@@ -942,6 +945,6 @@ If no changes were needed, skip this step.
 
 ## Self-Review Notes
 
-- **Spec coverage:** Sidebar tri-state + hybrid toggle (Tasks 6–8) ✓; grid + padding (Task 1) ✓; stat cards (Task 2) ✓; phone filter scroll + search font (Task 3) ✓; sort/analytics row (Task 4) ✓; dialog padding/clamp/scroll (Task 5) ✓; anti-flash (Task 7) ✓; useMediaQuery (Task 6) ✓; verification sweep (Task 9) ✓.
+- **Spec coverage:** Sidebar tri-state + hybrid toggle (Tasks 6–8) ✓; grid + padding (Task 1) ✓; stat cards (Task 2) ✓; phone filter scroll + search font (Task 3) ✓; sort/analytics row (Task 4) ✓; dialog padding/clamp/scroll (Task 5) ✓; flash prevention via lazy-init `useMediaQuery` (Task 6) — replaces the spec's html-class script, which would have been dead code since nothing consumes the class and the Dashboard island is client-only behind AppShell's auth gate; sidebar pref lib (Task 7) ✓; verification sweep (Task 9) ✓.
 - **Breakpoint note:** Spec table said rail at `md` (768–1023) and overlay `<768`. Implementation makes the permanent sidebar appear at `md` (Task 8 Step 4) and moves the hamburger/backdrop hide from `lg` to `md` (Steps 5–6) to match. The Tailwind rail width classes use `md:` so they apply across the whole permanent-sidebar range.
 - **Type consistency:** lib exports `getSidebarPref` / `setSidebarPref` / `toggleSidebarPref` / `applySidebarClass` (Task 7) are exactly the names imported in Task 8 Step 1. Hook exports `useIsTabletUp` / `useIsDesktopUp` (Task 6) match Task 8 imports.
