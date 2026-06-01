@@ -897,7 +897,7 @@ Expected: build completes with no errors.
 - 375px (phone): hamburger header visible; tapping it slides in the full `w-64` sidebar over a backdrop; no rail.
 - 800px (tablet, no stored pref): sidebar is permanently visible as a narrow `w-16` icon rail; an expand chevron/panel button appears; clicking it widens to `w-64` and persists.
 - 1100px (desktop, no stored pref): sidebar is full `w-64`; a collapse button is in the header; clicking it shrinks to rail and persists.
-- Reload after toggling: state is preserved with no flash (the `<html>` gets `sidebar-collapsed` before hydration).
+- Reload after toggling: state is preserved with no flash (`useMediaQuery` lazy-inits from `matchMedia` before paint; the Dashboard island is client-only behind AppShell's auth gate, so no html-class script is needed).
 
 - [ ] **Step 13: Commit**
 
