@@ -45,9 +45,9 @@ The sidebar has three modes driven by viewport width:
 - Width `w-16`. Nav items show icon only; the category/label text is hidden and surfaced as a `title` tooltip on hover.
 - The "Semua Domain", category list, "Arsip", "Kelola" tools, and footer buttons all degrade to icon-only in rail mode.
 
-**Anti-flash:** inline script in `Layout.astro` (same pattern as theme) reads `sidebar-collapsed` and sets an initial class on `<html>` before hydration to avoid a layout jump.
+**Flash prevention:** no inline html-class script is needed. The `Dashboard` island renders only client-side (AppShell returns `null` while resolving the auth check, so it never participates in SSR/hydration), and `useMediaQuery` lazily initializes from `window.matchMedia` on its first render — so the correct sidebar width is computed before paint. `Layout.astro` is unchanged.
 
-**New hook `src/hooks/useMediaQuery.ts`:** detects `md`/`lg` for React logic (auto-close overlay when resizing into tablet range, decide whether the toggle applies).
+**New hook `src/hooks/useMediaQuery.ts`:** detects `md`/`lg` for React logic (sidebar rail vs full decision, whether the toggle applies); lazy-inits from `matchMedia`.
 
 **New lib `src/lib/sidebar.ts`:** `getSidebarCollapsed()` / `setSidebarCollapsed()` / `toggleSidebar()` — mirrors `src/lib/theme.ts`.
 
@@ -94,9 +94,8 @@ Phone focus is filters/nav, not dialogs, so only minimal safe edits in `ui/dialo
 
 | File | Change |
 |---|---|
-| `src/hooks/useMediaQuery.ts` | **new** — breakpoint detection |
+| `src/hooks/useMediaQuery.ts` | **new** — breakpoint detection, lazy-init (no flash) |
 | `src/lib/sidebar.ts` | **new** — get/set/toggle collapse (theme.ts pattern) |
-| `src/layouts/Layout.astro` | inline anti-flash sidebar script |
 | `src/components/Dashboard.tsx` | sidebar tri-state + toggle, domain grid, padding, sort row |
 | `src/components/StatusSummary.tsx` | stat cards, filter horizontal-scroll on phone, search font |
 | `src/components/ui/dialog.tsx` | adaptive padding & width on phone |
