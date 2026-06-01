@@ -475,7 +475,7 @@ Expected: build completes with no errors. (Hook is unused for now — that's fin
 
 ```bash
 git add src/hooks/useMediaQuery.ts
-git commit -m "feat: add SSR-safe useMediaQuery hook"
+git commit -m "feat: add useMediaQuery hook (lazy-init from matchMedia)"
 ```
 
 ---
@@ -947,4 +947,4 @@ If no changes were needed, skip this step.
 
 - **Spec coverage:** Sidebar tri-state + hybrid toggle (Tasks 6–8) ✓; grid + padding (Task 1) ✓; stat cards (Task 2) ✓; phone filter scroll + search font (Task 3) ✓; sort/analytics row (Task 4) ✓; dialog padding/clamp/scroll (Task 5) ✓; flash prevention via lazy-init `useMediaQuery` (Task 6) — replaces the spec's html-class script, which would have been dead code since nothing consumes the class and the Dashboard island is client-only behind AppShell's auth gate; sidebar pref lib (Task 7) ✓; verification sweep (Task 9) ✓.
 - **Breakpoint note:** Spec table said rail at `md` (768–1023) and overlay `<768`. Implementation makes the permanent sidebar appear at `md` (Task 8 Step 4) and moves the hamburger/backdrop hide from `lg` to `md` (Steps 5–6) to match. The Tailwind rail width classes use `md:` so they apply across the whole permanent-sidebar range.
-- **Type consistency:** lib exports `getSidebarPref` / `setSidebarPref` / `toggleSidebarPref` / `applySidebarClass` (Task 7) are exactly the names imported in Task 8 Step 1. Hook exports `useIsTabletUp` / `useIsDesktopUp` (Task 6) match Task 8 imports.
+- **Type consistency:** lib exports `getSidebarPref` / `setSidebarPref` / `toggleSidebarPref` (Task 7) — Task 8 Step 1 imports only `getSidebarPref` and `toggleSidebarPref`, both present. Hook exports `useIsTabletUp` / `useIsDesktopUp` (Task 6) match Task 8 imports.
