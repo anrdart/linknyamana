@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Globe, Wifi, WifiOff, RefreshCw, Loader2, Search, Clock, AlertTriangle, Bell } from 'lucide-react'
+import { Globe, Wifi, WifiOff, Search, Clock, AlertTriangle } from 'lucide-react'
 import { type DomainCategory } from '@/data/domains'
 
 type StatusFilter = 'all' | 'online' | 'offline' | 'checking'
 
 interface StatusSummaryProps {
   categories: DomainCategory[]
-  onRefresh: (force?: boolean) => void
-  isRefreshing: boolean
   activeCategory: string | null
   onCategoryChange: (category: string | null) => void
   statusFilter: StatusFilter
@@ -19,16 +16,10 @@ interface StatusSummaryProps {
   onSearchQueryChange: (query: string) => void
   expiryFilter: string | null
   onExpiryFilterChange: (filter: string | null) => void
-  onNotifyExpiring?: () => void
-  isNotifying?: boolean
-  notifyResult?: { sent: number; failed: number; errors?: string[] } | null
-  isStaffwebdev?: boolean
 }
 
 export function StatusSummary({
   categories,
-  onRefresh,
-  isRefreshing,
   activeCategory,
   onCategoryChange,
   statusFilter,
@@ -37,10 +28,6 @@ export function StatusSummary({
   onSearchQueryChange,
   expiryFilter,
   onExpiryFilterChange,
-  onNotifyExpiring,
-  isNotifying,
-  notifyResult,
-  isStaffwebdev,
 }: StatusSummaryProps) {
   const [localSearch, setLocalSearch] = useState(searchQuery)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -102,7 +89,7 @@ export function StatusSummary({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">Total Domain</CardTitle>
@@ -153,58 +140,6 @@ export function StatusSummary({
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 sm:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Actions</CardTitle>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              onClick={() => onRefresh(true)}
-              disabled={isRefreshing}
-              size="sm"
-              className="w-full"
-            >
-              {isRefreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-            {isStaffwebdev && (
-              <Button
-                onClick={() => onNotifyExpiring?.()}
-                disabled={isNotifying || isRefreshing}
-                size="sm"
-                variant="outline"
-                className="w-full"
-              >
-                {isNotifying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Bell className="h-4 w-4" />
-                )}
-                Check & Notify
-              </Button>
-            )}
-            {notifyResult && (
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground">
-                  <span className="text-green-600">{notifyResult.sent} terkirim</span>
-                  {notifyResult.failed > 0 && (
-                    <>, <span className="text-destructive">{notifyResult.failed} gagal</span></>
-                  )}
-                </p>
-                {notifyResult.errors && notifyResult.errors.length > 0 && (
-                  <p className="text-[9px] text-destructive/80 leading-tight">
-                    {notifyResult.errors[0]}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
