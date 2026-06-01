@@ -866,7 +866,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-4 lg:p-6 space-y-6">
+          <div className="p-4 lg:p-6 xl:p-8 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -952,7 +952,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                       ({filteredDomains.length} domain{filteredDomains.length !== 1 ? 's' : ''})
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6">
                     {filteredDomains.map((domain) => (
                       <DomainCard
                         key={domain.url}
