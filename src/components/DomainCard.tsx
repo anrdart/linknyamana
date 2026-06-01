@@ -167,11 +167,12 @@ export function DomainCard({
               {/* Desktop: hover-reveal on active cards; always visible on archived (card is pointer-events-none, can't be hovered) */}
               <div className={cn(
                 'hidden sm:flex items-center gap-1 transition-opacity',
-                !isArchived && 'opacity-0 group-hover:opacity-100'
+                !isArchived && 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
               )}>
                 <button
                   onClick={(e) => { e.stopPropagation(); onArchive?.(domain) }}
                   title={isArchived ? 'Pindahkan ke Aktif' : 'Pindahkan ke Arsip'}
+                  aria-label={isArchived ? 'Pindahkan ke Aktif' : 'Pindahkan ke Arsip'}
                   className="opacity-60 hover:opacity-100 transition-opacity p-1"
                 >
                   <Archive className="h-3.5 w-3.5" />
@@ -180,6 +181,7 @@ export function DomainCard({
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit?.(domain) }}
                     title="Edit"
+                    aria-label="Edit"
                     className="opacity-60 hover:opacity-100 transition-opacity p-1"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -193,6 +195,7 @@ export function DomainCard({
                     }
                   }}
                   title="Hapus"
+                  aria-label="Hapus"
                   className="text-destructive/60 hover:text-destructive transition-colors p-1"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -211,6 +214,7 @@ export function DomainCard({
                       <MoreVertical className="h-4 w-4" />
                     </button>
                   </DropdownMenuTrigger>
+                  {/* stopPropagation is required: React portals bubble events up the React tree to the card's onClick */}
                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem onSelect={() => onArchive?.(domain)}>
                       <Archive className="h-3.5 w-3.5" />
