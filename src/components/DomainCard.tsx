@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Loader2, Archive, Trash2, Pencil, Lock, AlertTriangle } from 'lucide-react'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { CheckCircle2, Archive, Trash2, Pencil, Lock, AlertTriangle, MoreVertical } from 'lucide-react'
 import { type Domain } from '@/data/domains'
 import { cn } from '@/lib/utils'
 
@@ -108,30 +109,20 @@ export function DomainCard({
       onClick={() => { if (!isArchived) onClick(domain) }}
     >
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="relative shrink-0">
-              <div
-                className={cn(
-                  'h-2.5 w-2.5 rounded-full transition-colors duration-500',
-                  isArchived ? 'bg-muted-foreground/40' : config.dotClass
-                )}
-              />
-              {isChecking && !isArchived && (
-                <Loader2 className="absolute -top-0.5 -left-0.5 h-3.5 w-3.5 animate-spin text-amber-500" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className={cn('font-medium text-sm truncate', isArchived && 'text-muted-foreground')}>{domain.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{domain.url}</p>
-              {domain.lastDeepChecked && (
-                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  Deep checked: {formatTimeAgo(domain.lastDeepChecked)}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 flex-wrap">
+        {/* Header: name + URL, full width */}
+        <div className="min-w-0">
+          <p className={cn('font-medium text-sm truncate', isArchived && 'text-muted-foreground')}>{domain.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{domain.url}</p>
+          {domain.lastDeepChecked && (
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+              Deep checked: {formatTimeAgo(domain.lastDeepChecked)}
+            </p>
+          )}
+        </div>
+
+        {/* Info + actions */}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
             {sslInfo && !isArchived && (
               <span
                 className={cn(
@@ -172,35 +163,75 @@ export function DomainCard({
           </div>
 
           {isStaffwebdev && (
-            <div className="flex items-center gap-1 ml-1 pointer-events-auto">
-              <button
-                onClick={(e) => { e.stopPropagation(); onArchive?.(domain) }}
-                title={isArchived ? 'Pindahkan ke Aktif' : 'Pindahkan ke Arsip'}
-                className="opacity-50 hover:opacity-100 transition-opacity p-1"
-              >
-                <Archive className="h-3.5 w-3.5" />
-              </button>
-              {!isArchived && (
+            <div className="shrink-0 pointer-events-auto">
+              {/* Desktop: hover-reveal on active cards; always visible on archived (card is pointer-events-none, can't be hovered) */}
+              <div className={cn(
+                'hidden sm:flex items-center gap-1 transition-opacity',
+                !isArchived && 'opacity-0 group-hover:opacity-100'
+              )}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onEdit?.(domain) }}
-                  title="Edit"
-                  className="opacity-50 hover:opacity-100 transition-opacity p-1"
+                  onClick={(e) => { e.stopPropagation(); onArchive?.(domain) }}
+                  title={isArchived ? 'Pindahkan ke Aktif' : 'Pindahkan ke Arsip'}
+                  className="opacity-60 hover:opacity-100 transition-opacity p-1"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
+                  <Archive className="h-3.5 w-3.5" />
                 </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.confirm('Hapus domain ini?')) {
-                    onDelete?.(domain);
-                  }
-                }}
-                title="Hapus"
-                className="text-destructive/50 hover:text-destructive transition-colors p-1"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+                {!isArchived && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit?.(domain) }}
+                    title="Edit"
+                    className="opacity-60 hover:opacity-100 transition-opacity p-1"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Hapus domain ini?')) {
+                      onDelete?.(domain);
+                    }
+                  }}
+                  title="Hapus"
+                  className="text-destructive/60 hover:text-destructive transition-colors p-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Mobile: kebab dropdown */}
+              <div className="sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="Aksi domain"
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onSelect={() => onArchive?.(domain)}>
+                      <Archive className="h-3.5 w-3.5" />
+                      {isArchived ? 'Pindahkan ke Aktif' : 'Pindahkan ke Arsip'}
+                    </DropdownMenuItem>
+                    {!isArchived && (
+                      <DropdownMenuItem onSelect={() => onEdit?.(domain)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onSelect={() => { if (window.confirm('Hapus domain ini?')) onDelete?.(domain) }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Hapus
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           )}
         </div>
