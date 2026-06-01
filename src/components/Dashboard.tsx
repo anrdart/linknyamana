@@ -896,7 +896,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             isStaffwebdev={isAdmin(user)}
           />
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button
               variant="outline"
               size="sm"
@@ -909,7 +909,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs sm:w-auto"
             >
               <option value="default">Urutan Default</option>
               <option value="status">Urut Status (offline dulu)</option>
