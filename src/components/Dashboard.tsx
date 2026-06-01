@@ -72,6 +72,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       : false
 
   const handleToggleSidebar = () => {
+    if (!isTabletUp) return
     const current = sidebarPref ?? (isTabletUp && !isDesktopUp)
     const next = toggleSidebarPref(current)
     setSidebarPrefState(next)
@@ -682,6 +683,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               className={cn('shrink-0 hidden md:inline-flex', railMode && 'md:hidden')}
               onClick={handleToggleSidebar}
               title="Ciutkan sidebar"
+              aria-label="Ciutkan sidebar"
+              aria-expanded={!railMode}
             >
               <PanelLeftClose className="h-5 w-5" />
             </Button>
@@ -700,6 +703,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               onClick={handleToggleSidebar}
               className="hidden md:flex items-center justify-center border-b p-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               title="Lebarkan sidebar"
+              aria-label="Lebarkan sidebar"
+              aria-expanded={!railMode}
             >
               <PanelLeft className="h-5 w-5" />
             </button>
@@ -725,6 +730,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
               title="Semua Domain"
+              aria-label="Semua Domain"
               onClick={() => {
                 setActiveCategory(null)
                 setViewMode('active')
@@ -807,6 +813,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
               title="Arsip"
+              aria-label="Arsip"
               onClick={() => {
                 setActiveCategory(null)
                 setViewMode('archive')
