@@ -13,9 +13,10 @@ import { ProgressReportDialog } from '@/components/ProgressReportDialog'
 import { ConsoleLogDialog } from '@/components/ConsoleLogDialog'
 import { AnalyticsPanel } from '@/components/AnalyticsPanel'
 import { type Domain, type DomainCategory, WORDPRESS_SETUP_STEPS } from '@/data/domains'
-import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell, Terminal, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Loader2, Menu, X, Shield, LayoutDashboard, Activity, LogOut, Plus, ChevronDown, Archive, Trash2, Pencil, Search, KeyRound, Sun, Moon, Upload, BarChart3, ArrowUpDown, Settings, Bell, Terminal, PanelLeftClose, PanelLeft, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { toggleTheme, getTheme } from '@/lib/theme'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -81,6 +82,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [userMgmtOpen, setUserMgmtOpen] = useState(false)
   const [isNotifying, setIsNotifying] = useState(false)
   const [notifyResult, setNotifyResult] = useState<{ sent: number; failed: number; errors?: string[] } | null>(null)
+  const [toastOpen, setToastOpen] = useState(false)
   const [addDomainOpen, setAddDomainOpen] = useState(false)
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [editDomain, setEditDomain] = useState<Domain | null>(null)
@@ -504,6 +506,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     setIsNotifying(false)
   }, [isNotifying])
 
+  useEffect(() => {
+    if (notifyResult) setToastOpen(true)
+  }, [notifyResult])
+
   const handleArchiveDomain = useCallback(async (domain: Domain) => {
     const newArchived = !domain.isArchived
 
@@ -662,6 +668,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   }
 
   return (
+    <ToastProvider swipeDirection="right">
     <div className="flex h-screen bg-background">
       <aside
         className={cn(
@@ -858,6 +865,15 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                     </button>
                   )}
                   {isAdmin(user) && (
+                    <button
+                      onClick={() => { handleNotifyExpiring(); setSidebarOpen(false) }}
+                      disabled={isNotifying}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
+                    >
+                      {isNotifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />} Check & Notify
+                    </button>
+                  )}
+                  {isAdmin(user) && (
                     <button onClick={() => { setUserMgmtOpen(true); setSidebarOpen(false) }} className="flex w-full items-center gap-2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
                       <Shield className="h-3 w-3" /> User
                     </button>
@@ -911,11 +927,22 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             <h1 className="font-bold text-sm truncate">LinkNyaMana</h1>
             <p className="text-[10px] text-muted-foreground truncate">{user.display_name}</p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => checkAllStatuses(true)}
+            disabled={isRefreshing}
+            title="Refresh"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} />
+          </Button>
         </header>
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-6 xl:p-8 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                 {activeCategory ? activeCategory : viewMode === 'archive' ? 'Arsip' : 'Dashboard'}
@@ -924,12 +951,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 Halo, {user.display_name} &mdash; {viewMode === 'archive' ? 'Domain yang tidak aktif' : 'Monitor website uptime dan tracking setup progress'}
               </p>
             </div>
+            <Button
+              size="sm"
+              onClick={() => checkAllStatuses(true)}
+              disabled={isRefreshing}
+              className="hidden md:inline-flex shrink-0"
+            >
+              <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+              Refresh
+            </Button>
           </div>
 
           <StatusSummary
             categories={categories}
-            onRefresh={checkAllStatuses}
-            isRefreshing={isRefreshing}
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
             statusFilter={statusFilter}
@@ -938,10 +972,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             onSearchQueryChange={setSearchQuery}
             expiryFilter={expiryFilter}
             onExpiryFilterChange={setExpiryFilter}
-            onNotifyExpiring={isAdmin(user) ? handleNotifyExpiring : undefined}
-            isNotifying={isNotifying}
-            notifyResult={notifyResult}
-            isStaffwebdev={isAdmin(user)}
           />
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1117,6 +1147,28 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         open={consoleLogOpen}
         onOpenChange={setConsoleLogOpen}
       />
+
+      {notifyResult && (
+        <Toast
+          open={toastOpen}
+          onOpenChange={setToastOpen}
+          duration={5000}
+          variant={notifyResult.failed > 0 ? 'destructive' : 'default'}
+        >
+          <div className="min-w-0">
+            <ToastTitle>
+              {notifyResult.sent === 0 && notifyResult.failed > 0 ? 'Gagal mengirim' : 'Notifikasi terkirim'}
+            </ToastTitle>
+            <ToastDescription>
+              {notifyResult.sent} terkirim &middot; {notifyResult.failed} gagal
+              {notifyResult.errors && notifyResult.errors.length > 0 ? ` — ${notifyResult.errors[0]}` : ''}
+            </ToastDescription>
+          </div>
+          <ToastClose />
+        </Toast>
+      )}
+      <ToastViewport />
     </div>
+    </ToastProvider>
   )
 }
