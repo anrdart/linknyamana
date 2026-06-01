@@ -89,9 +89,9 @@ export function DomainCard({
   const sslInfo = getSslInfo(sslExpiryDate)
 
   const statusConfig = {
-    online: { variant: 'success' as const, label: 'Online', dotClass: 'bg-emerald-500' },
-    offline: { variant: 'destructive' as const, label: 'Offline', dotClass: 'bg-red-500' },
-    checking: { variant: 'warning' as const, label: 'Checking...', dotClass: 'bg-amber-500' },
+    online: { variant: 'success' as const, label: 'Online' },
+    offline: { variant: 'destructive' as const, label: 'Offline' },
+    checking: { variant: 'warning' as const, label: 'Checking...' },
   }
 
   const config = statusConfig[domain.status]
